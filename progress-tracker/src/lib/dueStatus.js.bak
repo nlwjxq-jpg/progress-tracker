@@ -1,0 +1,26 @@
+import { differenceInDays, parseISO, isBefore, startOfDay } from 'date-fns'
+
+export function getDueStatus(dueDate) {
+  if (!dueDate) return 'no-deadline'
+
+  const today = startOfDay(new Date())
+  const due = startOfDay(parseISO(dueDate))
+
+  if (isBefore(due, today)) return 'overdue'
+  if (differenceInDays(due, today) <= 3) return 'near-due'
+  return 'on-track'
+}
+
+export const STATUS_COLORS = {
+  'overdue': 'badge-red',
+  'near-due': 'badge-yellow',
+  'on-track': 'badge-green',
+  'no-deadline': 'text-gray-400',
+}
+
+export const STATUS_LABELS = {
+  'overdue': '已逾期',
+  'near-due': '临近截止',
+  'on-track': '正常',
+  'no-deadline': '无截止日',
+}
