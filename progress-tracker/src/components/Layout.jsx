@@ -1,12 +1,14 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { LayoutDashboard, ListTodo, Building2, Target, LogOut, Wrench } from 'lucide-react'
+import { LayoutDashboard, ListTodo, Building2, Target, LogOut, Wrench, Upload, UserPlus } from 'lucide-react'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: '仪表盘' },
   { to: '/tasks', icon: ListTodo, label: '任务列表' },
   { to: '/departments', icon: Building2, label: '部门与人员' },
   { to: '/goals', icon: Target, label: '目标管理' },
+  { to: '/import-tasks', icon: Upload, label: '导入任务表' },
+  { to: '/import-members', icon: UserPlus, label: '导入人员表' },
   { to: '/ai-settings', icon: Wrench, label: 'AI 设置' },
 ]
 

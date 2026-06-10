@@ -8,6 +8,8 @@ import TaskForm from './pages/TaskForm'
 import Departments from './pages/Departments'
 import Goals from './pages/Goals'
 import AISettings from './pages/AISettings'
+import ImportTasks from './pages/ImportTasks'
+import ImportMembers from './pages/ImportMembers'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -29,6 +31,8 @@ export default function App() {
           <Route path="/departments" element={<Departments />} />
           <Route path="/goals" element={<Goals />} />
           <Route path="/ai-settings" element={<AISettings />} />
+          <Route path="/import-tasks" element={<ImportTasks />} />
+          <Route path="/import-members" element={<ImportMembers />} />
         </Route>
       </Routes>
     </AuthProvider>
