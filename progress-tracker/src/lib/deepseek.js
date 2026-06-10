@@ -1,22 +1,33 @@
 import { supabase } from './supabase'
 
 /**
- * Get the Edge Function URL for AI recommend.
- * Uses the same Supabase project as the database.
+ * Get saved AI API URL from localStorage, or use default.
  */
+export function getAiApiUrl() {
+  return localStorage.getItem('ai_api_url') || 'https://api.deepseek.com/v1/chat/completions'
+}
+
+export function setAiApiUrl(url) {
+  localStorage.setItem('ai_api_url', url)
+}
+
 function getFunctionUrl() {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL
   return `${baseUrl}/functions/v1/deepseek-recommend`
 }
 
 /**
- * Recommend task assignee via Supabase Edge Function (which calls company's self-hosted DeepSeek).
- * The Edge Function holds the API key securely; the frontend never touches it.
+ * Recommend task assignee via Supabase Edge Function.
+ * Passes the AI API URL from localStorage so user can switch between
+ * official DeepSeek and company self-hosted endpoint.
+ * The API key stays securely in Supabase Secrets.
  */
 export async function recommendAssignee(taskTitle, taskDescription, members) {
   try {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return ruleBasedRecommend(taskTitle, taskDescription, members)
+
+    const apiUrl = getAiApiUrl()
 
     const response = await fetch(getFunctionUrl(), {
       method: 'POST',
@@ -24,7 +35,7 @@ export async function recommendAssignee(taskTitle, taskDescription, members) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`
       },
-      body: JSON.stringify({ taskTitle, taskDescription, members })
+      body: JSON.stringify({ taskTitle, taskDescription, members, apiUrl })
     })
 
     if (!response.ok) throw new Error(`Edge Function returned ${response.status}`)

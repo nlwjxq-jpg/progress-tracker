@@ -1,5 +1,6 @@
 // Supabase Edge Function: AI 任务分工推荐中转
-// 前端不持有 DeepSeek API key，通过此函数安全调用公司自建 DeepSeek
+// 前端不持有 DeepSeek API key，通过此函数安全调用 DeepSeek API
+// 前端可传入 apiUrl 切换官方/公司自建地址；key 始终在 Supabase Secrets 中
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -13,28 +14,31 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { taskTitle, taskDescription, members } = await req.json();
+    const { taskTitle, taskDescription, members, apiUrl } = await req.json();
 
     const memberList = members
       .map((m: any) => `${m.name}（${m.role || "成员"}，当前任务数：${m.task_count || 0}，擅长：${m.skills || "未设置"}）`)
       .join("\n");
 
-    const apiUrl = Deno.env.get("DEEPSEEK_API_URL") || "https://api.deepseek.com/v1/chat/completions";
+    // Priority: 前端传来的 apiUrl > 环境变量 > 默认官方地址
+    const finalApiUrl = apiUrl
+      || Deno.env.get("DEEPSEEK_API_URL")
+      || "https://api.deepseek.com/v1/chat/completions";
+
     const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
 
     if (!apiKey) {
-      // Fallback: return load-based recommendation without AI
       const sorted = [...members].sort((a: any, b: any) => (a.task_count || 0) - (b.task_count || 0));
       return new Response(
         JSON.stringify({
           name: sorted[0]?.name || "",
-          reason: "当前任务负载最低（未配置AI Key，使用规则匹配）",
+          reason: "当前任务负载最低（未配置 API Key，使用规则匹配）",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const response = await fetch(apiUrl, {
+    const response = await fetch(finalApiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -68,7 +72,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // AI returned invalid format, fallback
     const sorted = [...members].sort((a: any, b: any) => (a.task_count || 0) - (b.task_count || 0));
     return new Response(
       JSON.stringify({ name: sorted[0]?.name || "", reason: "当前任务负载最低" }),
