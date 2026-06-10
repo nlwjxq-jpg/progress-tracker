@@ -28,9 +28,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_DEEPSEEK_API_URL: ${{ secrets.VITE_DEEPSEEK_API_URL || 'https://api.deepseek.com/v1/chat/completions' }}
-          VITE_DEEPSEEK_API_KEY: ${{ secrets.VITE_DEEPSEEK_API_KEY || '' }}
-      - uses: actions/upload-pages-artifact@v3
+                          - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
 

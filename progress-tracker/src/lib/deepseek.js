@@ -1,52 +1,39 @@
-const API_URL = import.meta.env.VITE_DEEPSEEK_API_URL
-const API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY
+import { supabase } from './supabase'
 
 /**
- * Call DeepSeek API to recommend task assignment based on department members.
- * Falls back to a rule-based match when API is unavailable.
+ * Get the Edge Function URL for AI recommend.
+ * Uses the same Supabase project as the database.
+ */
+function getFunctionUrl() {
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL
+  return `${baseUrl}/functions/v1/deepseek-recommend`
+}
+
+/**
+ * Recommend task assignee via Supabase Edge Function (which calls company's self-hosted DeepSeek).
+ * The Edge Function holds the API key securely; the frontend never touches it.
  */
 export async function recommendAssignee(taskTitle, taskDescription, members) {
-  if (!API_KEY || !API_URL) {
-    return ruleBasedRecommend(taskTitle, taskDescription, members)
-  }
-
   try {
-    const memberList = members
-      .map(m => `${m.name}（${m.role || '成员'}，当前任务数：${m.task_count || 0}，擅长：${m.skills || '未设置'}）`)
-      .join('\n')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return ruleBasedRecommend(taskTitle, taskDescription, members)
 
-    const response = await fetch(API_URL, {
+    const response = await fetch(getFunctionUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
+        'Authorization': `Bearer ${session.access_token}`
       },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [
-          {
-            role: 'system',
-            content: `你是一个任务分工助手。根据任务标题和描述，从以下团队成员中选择最合适的人选。考虑因素：角色匹配度、当前任务负载（优先分配给负载低的人）、技能匹配。只返回一个JSON对象，格式为 {"name":"成员名","reason":"一句话理由"}，不要输出其他内容。`
-          },
-          {
-            role: 'user',
-            content: `任务标题：${taskTitle}\n任务描述：${taskDescription}\n\n团队成员：\n${memberList}`
-          }
-        ],
-        max_tokens: 200,
-        temperature: 0.3
-      })
+      body: JSON.stringify({ taskTitle, taskDescription, members })
     })
 
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content?.trim() || ''
-    const jsonMatch = content.match(/\{[^}]+\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    }
+    if (!response.ok) throw new Error(`Edge Function returned ${response.status}`)
+
+    const result = await response.json()
+    if (result?.name) return result
     return ruleBasedRecommend(taskTitle, taskDescription, members)
   } catch (err) {
-    console.warn('DeepSeek API call failed, using rule-based fallback:', err.message)
+    console.warn('AI recommend failed, using rule-based fallback:', err.message)
     return ruleBasedRecommend(taskTitle, taskDescription, members)
   }
 }
