@@ -1,20 +1,18 @@
-﻿import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { supabase, TABLES } from '../lib/supabase'
-import { useAuth } from '../context/AuthContext'
-import { getDueStatus, STATUS_LABELS } from '../lib/dueStatus'
-import { format } from 'date-fns'
-import { Plus, Search, Edit, FileText } from 'lucide-react'
+﻿import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
+import { supabase, TABLES } from "../lib/supabase"
+import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
+import { format } from "date-fns"
+import { Plus, Search, Edit, FileText } from "lucide-react"
 
 export default function Tasks() {
-  const { user } = useAuth()
   const [tasks, setTasks] = useState([])
   const [members, setMembers] = useState([])
-  const [filter, setFilter] = useState('all')
-  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState("all")
+  const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
   const [progressModal, setProgressModal] = useState(null)
-  const [progressForm, setProgressForm] = useState({ last_progress: '', this_target: '' })
+  const [progressForm, setProgressForm] = useState({ last_progress: "", this_target: "" })
   const [savingProgress, setSavingProgress] = useState(false)
 
   useEffect(() => { loadData() }, [])
@@ -22,8 +20,8 @@ export default function Tasks() {
   async function loadData() {
     try {
       const [{ data: taskData }, { data: memberData }] = await Promise.all([
-        supabase.from(TABLES.TASKS).select('*').order('created_at', { ascending: false }),
-        supabase.from(TABLES.MEMBERS).select('*')
+        supabase.from(TABLES.TASKS).select("*").order("created_at", { ascending: false }),
+        supabase.from(TABLES.MEMBERS).select("*")
       ])
       setTasks(taskData || [])
       setMembers(memberData || [])
@@ -34,65 +32,28 @@ export default function Tasks() {
     }
   }
 
-  function getDeptLeaders(deptName) {
-    if (!deptName) return []
-    return members.filter(m =>
-      m.department_id && membersByDeptId[m.department_id] === deptName &&
-      (m.role.includes('部长') || m.role.includes('副部长') || m.role.includes('副部'))
-    )
-  }
-
-  function getWorkMembers(deptName) {
-    if (!deptName) return members.filter(m => !(m.role.includes('部长') || m.role.includes('副部长')))
-    return members.filter(m =>
-      m.department_id && membersByDeptId[m.department_id] === deptName &&
-      !(m.role.includes('部长') || m.role.includes('副部长'))
-    )
-  }
-
-  // Build dept id -> name map
-  const membersByDeptId = {}
-  const deptNameByMember = {}
-  members.forEach(m => {
-    if (m.department_id) {
-      if (!membersByDeptId[m.department_id]) {
-        membersByDeptId[m.department_id] = ''
-      }
-    }
-    deptNameByMember[m.name] = m.role || ''
-  })
-
-  // Load department names
-  useEffect(() => {
-    supabase.from(TABLES.DEPARTMENTS).select('*').then(({ data }) => {
-      (data || []).forEach(d => {
-        membersByDeptId[d.id] = d.name
-      })
-    })
-  }, [members])
-
   const filteredTasks = tasks.filter(t => {
-    if (filter === 'overdue' && t.status !== 'completed' && getDueStatus(t.due_date) !== 'overdue') return false
-    if (filter === 'near-due' && t.status !== 'completed' && getDueStatus(t.due_date) !== 'near-due') return false
-    if (filter === 'completed' && t.status !== 'completed') return false
-    if (filter === 'active' && t.status === 'completed') return false
+    if (filter === "overdue" && t.status !== "completed" && getDueStatus(t.due_date) !== "overdue") return false
+    if (filter === "near-due" && t.status !== "completed" && getDueStatus(t.due_date) !== "near-due") return false
+    if (filter === "completed" && t.status !== "completed") return false
+    if (filter === "active" && t.status === "completed") return false
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
     return true
   })
 
   const filters = [
-    { key: 'all', label: '全部' },
-    { key: 'active', label: '进行中' },
-    { key: 'overdue', label: '已逾期' },
-    { key: 'near-due', label: '临近截止' },
-    { key: 'completed', label: '已完成' },
+    { key: "all", label: "全部" },
+    { key: "active", label: "进行中" },
+    { key: "overdue", label: "已逾期" },
+    { key: "near-due", label: "临近截止" },
+    { key: "completed", label: "已完成" },
   ]
 
   function openProgressModal(task) {
     setProgressModal(task)
     setProgressForm({
-      last_progress: task.last_month_progress || '',
-      this_target: task.this_month_target || ''
+      last_progress: task.last_month_progress || "",
+      this_target: task.this_month_target || ""
     })
   }
 
@@ -100,10 +61,9 @@ export default function Tasks() {
     if (!progressModal) return
     setSavingProgress(true)
     const now = new Date()
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
     try {
-      // Move previous this_month_target to last_month_target
-      const prevTarget = progressModal.this_month_target || ''
+      const prevTarget = progressModal.this_month_target || ""
       const updateData = {
         last_month_progress: progressForm.last_progress,
         this_month_target: progressForm.this_target,
@@ -112,7 +72,7 @@ export default function Tasks() {
       if (prevTarget) {
         updateData.last_month_target = prevTarget
       }
-      await supabase.from(TABLES.TASKS).update(updateData).eq('id', progressModal.id)
+      await supabase.from(TABLES.TASKS).update(updateData).eq("id", progressModal.id)
       setProgressModal(null)
       loadData()
     } catch (err) {
@@ -120,7 +80,6 @@ export default function Tasks() {
     } finally {
       setSavingProgress(false)
     }
-  }
   }
 
   if (loading) return <div className="animate-spin w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full mx-auto mt-24" />
@@ -150,7 +109,7 @@ export default function Tasks() {
               key={f.key}
               onClick={() => setFilter(f.key)}
               className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                filter === f.key ? 'bg-blue-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                filter === f.key ? "bg-blue-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >
               {f.label}
@@ -173,15 +132,14 @@ export default function Tasks() {
                 <th className="pb-2 font-medium">截止日期</th>
                 <th className="pb-2 font-medium">状态</th>
                 <th className="pb-2 font-medium">进度</th>
-                <th className="pb-2 font-medium w-16">操作</th>
               </tr>
             </thead>
             <tbody>
               {filteredTasks.map(task => {
                 const status = getDueStatus(task.due_date)
-                const workAssignee = task.work_assignee || task.assignee || ''
-                const deptLeader = task.dept_leader || ''
-                const lastMonthTarget = task.last_month_target || ''
+                const workAssignee = task.work_assignee || task.assignee || ""
+                const deptLeader = task.dept_leader || ""
+                const lastMonthTarget = task.last_month_target || ""
                 return (
                   <tr key={task.id} className="border-b border-gray-50 hover:bg-gray-50">
                     <td className="py-2.5">
@@ -197,24 +155,24 @@ export default function Tasks() {
                     </td>
                     <td className="py-2.5">
                       <span className="text-xs text-gray-600 whitespace-pre-wrap max-w-40 block truncate">
-                        {lastMonthTarget || '-'}
+                        {lastMonthTarget || "-"}
                       </span>
                     </td>
                     <td className="py-2.5">
-                      <span className="text-sm">{workAssignee || '-'}</span>
+                      <span className="text-sm">{workAssignee || "-"}</span>
                     </td>
                     <td className="py-2.5">
-                      <span className="text-sm">{deptLeader || '-'}</span>
+                      <span className="text-sm">{deptLeader || "-"}</span>
                     </td>
-                    <td className="py-2.5 whitespace-nowrap">{task.due_date ? format(new Date(task.due_date), 'yyyy-MM-dd') : '-'}</td>
+                    <td className="py-2.5 whitespace-nowrap">{task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "-"}</td>
                     <td className="py-2.5">
                       <span className={`${
-                        task.status === 'completed' ? 'badge-green' :
-                        status === 'overdue' ? 'badge-red' :
-                        status === 'near-due' ? 'badge-yellow' :
-                        'badge-green'
+                        task.status === "completed" ? "badge-green" :
+                        status === "overdue" ? "badge-red" :
+                        status === "near-due" ? "badge-yellow" :
+                        "badge-green"
                       } inline-block`}>
-                        {task.status === 'completed' ? '已完成' : STATUS_LABELS[status]}
+                        {task.status === "completed" ? "已完成" : STATUS_LABELS[status]}
                       </span>
                     </td>
                     <td className="py-2.5">
@@ -222,9 +180,9 @@ export default function Tasks() {
                         <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
-                              task.status === 'completed' ? 'bg-green-500' :
-                              (task.progress || 0) > 70 ? 'bg-blue-500' :
-                              (task.progress || 0) > 30 ? 'bg-yellow-500' : 'bg-gray-400'
+                              task.status === "completed" ? "bg-green-500" :
+                              (task.progress || 0) > 70 ? "bg-blue-500" :
+                              (task.progress || 0) > 30 ? "bg-yellow-500" : "bg-gray-400"
                             }`}
                             style={{ width: `${task.progress || 0}%` }}
                           />
@@ -239,7 +197,6 @@ export default function Tasks() {
                         填写进展/目标
                       </button>
                     </td>
-                    <td className="py-2.5"></td>
                   </tr>
                 )
               })}
@@ -248,7 +205,6 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* Progress Modal */}
       {progressModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setProgressModal(null)}>
           <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-lg space-y-4" onClick={e => e.stopPropagation()}>
@@ -280,7 +236,7 @@ export default function Tasks() {
             <div className="flex gap-2 justify-end">
               <button className="btn-secondary" onClick={() => setProgressModal(null)}>取消</button>
               <button className="btn-primary" onClick={saveProgress} disabled={savingProgress}>
-                {savingProgress ? '保存中...' : '保存'}
+                {savingProgress ? "保存中..." : "保存"}
               </button>
             </div>
           </div>
