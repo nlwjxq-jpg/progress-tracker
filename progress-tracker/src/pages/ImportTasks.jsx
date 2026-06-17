@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, TABLES } from '../lib/supabase'
 import { parseFileContent } from '../lib/fileParser'
@@ -44,7 +44,7 @@ export default function ImportTasks() {
 
     try {
       const result = await parseTasksFromText(textContent)
-      if (result.warning) setWarning(result.warning)
+      if (result.warning) setWarning(result.raw ? result.warning + '\\nAI原始返回: ' + result.raw.slice(0, 300) : result.warning)
       if (result.error) { setError(result.error); return }
 
       const tasks = (result.tasks || []).map((t, i) => ({

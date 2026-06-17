@@ -1,16 +1,12 @@
 // Supabase Edge Function: AI 解析任务表
-// 前端上传文件后提取文本，发给此函数让 AI 结构化输出任务列表
-// 去重和写入由前端完成，AI 只负责解析
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req: Request) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      },
+    });
   }
 
   try {
@@ -19,7 +15,7 @@ serve(async (req: Request) => {
     if (!textContent || textContent.trim().length === 0) {
       return new Response(
         JSON.stringify({ tasks: [], warning: "文件内容为空" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
       );
     }
 
@@ -32,7 +28,7 @@ serve(async (req: Request) => {
     if (!apiKey) {
       return new Response(
         JSON.stringify({ tasks: [], warning: "未配置 AI Key，无法解析" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
       );
     }
 
@@ -92,41 +88,63 @@ serve(async (req: Request) => {
       console.error(`DeepSeek API error: ${response.status} ${errText}`);
       return new Response(
         JSON.stringify({ tasks: [], warning: `AI API 返回错误 ${response.status}，请稍后重试` }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
       );
     }
 
     const data = await response.json();
-    const content: string = data.choices?.[0]?.message?.content?.trim() || "";
+    const content = data.choices?.[0]?.message?.content?.trim() || "";
 
     console.log(`DeepSeek response: ${content.slice(0, 300)}`);
 
+    // Try multiple ways to extract JSON array
+    let tasks = null;
+
+    // Method 1: direct JSON array match
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       try {
-        const tasks = JSON.parse(jsonMatch[0]);
-        return new Response(
-          JSON.stringify({ tasks }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } catch (parseErr) {
-        console.error(`JSON parse error: ${parseErr.message}`);
-        return new Response(
-          JSON.stringify({ tasks: [], warning: "AI 返回格式异常，请重试", raw: content.slice(0, 200) }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        tasks = JSON.parse(jsonMatch[0]);
+      } catch (_) {
+        // continue to next method
       }
     }
 
+    // Method 2: try to fix common issues - unescaped newlines in strings
+    if (!tasks) {
+      try {
+        const cleaned = content.replace(/(?<!\\)"/g, '\\"').replace(/\n/g, '\\n');
+        const m = cleaned.match(/\[[\s\S]*\]/);
+        if (m) tasks = JSON.parse(m[0]);
+      } catch (_) {}
+    }
+
+    // Method 3: extract JSON objects one by one
+    if (!tasks) {
+      const objMatches = content.match(/\{[^}]+\}/g);
+      if (objMatches) {
+        tasks = objMatches.map(s => {
+          try { return JSON.parse(s); } catch (_) { return null; }
+        }).filter(Boolean);
+      }
+    }
+
+    if (tasks && tasks.length > 0) {
+      return new Response(
+        JSON.stringify({ tasks }),
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ tasks: [], warning: "AI 返回格式异常，请重试", raw: content.slice(0, 200) }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ tasks: [], warning: "AI 返回格式异常，请重试", raw: content.slice(0, 500) }),
+      { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
     );
   } catch (err) {
     console.error(`Function error: ${err.message}`);
     return new Response(
       JSON.stringify({ tasks: [], error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
     );
   }
 });

@@ -1,23 +1,19 @@
 // Supabase Edge Function: AI 任务分工推荐中转
-// 前端不持有 DeepSeek API key，通过此函数安全调用 DeepSeek API
-// 前端可传入 apiUrl 切换官方/公司自建地址；key 始终在 Supabase Secrets 中
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req: Request) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      },
+    });
   }
 
   try {
     const { taskTitle, taskDescription, members, apiUrl } = await req.json();
 
     const memberList = members
-      .map((m: any) => `${m.name}（${m.role || "成员"}，当前任务数：${m.task_count || 0}，擅长：${m.skills || "未设置"}）`)
+      .map((m) => `${m.name}（${m.role || "成员"}，当前任务数：${m.task_count || 0}，擅长：${m.skills || "未设置"}）`)
       .join("\n");
 
     const finalApiUrl = apiUrl
@@ -27,13 +23,13 @@ serve(async (req: Request) => {
     const apiKey = Deno.env.get("DEEPSEEK_API_KEY");
 
     if (!apiKey) {
-      const sorted = [...members].sort((a: any, b: any) => (a.task_count || 0) - (b.task_count || 0));
+      const sorted = [...members].sort((a, b) => (a.task_count || 0) - (b.task_count || 0));
       return new Response(
         JSON.stringify({
           name: sorted[0]?.name || "",
           reason: "当前任务负载最低（未配置 API Key，使用规则匹配）",
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
       );
     }
 
@@ -74,15 +70,15 @@ serve(async (req: Request) => {
     if (!response.ok) {
       const errText = await response.text().catch(() => "unknown");
       console.error(`DeepSeek API error: ${response.status} ${errText}`);
-      const sorted = [...members].sort((a: any, b: any) => (a.task_count || 0) - (b.task_count || 0));
+      const sorted = [...members].sort((a, b) => (a.task_count || 0) - (b.task_count || 0));
       return new Response(
         JSON.stringify({ name: sorted[0]?.name || "", reason: `API 异常，按负载最低分配` }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
       );
     }
 
     const data = await response.json();
-    const content: string = data.choices?.[0]?.message?.content?.trim() || "";
+    const content = data.choices?.[0]?.message?.content?.trim() || "";
 
     console.log(`DeepSeek recommend response: ${content}`);
 
@@ -91,20 +87,20 @@ serve(async (req: Request) => {
     if (jsonMatch) {
       return new Response(
         JSON.stringify(JSON.parse(jsonMatch[0])),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
       );
     }
 
-    const sorted = [...members].sort((a: any, b: any) => (a.task_count || 0) - (b.task_count || 0));
+    const sorted = [...members].sort((a, b) => (a.task_count || 0) - (b.task_count || 0));
     return new Response(
       JSON.stringify({ name: sorted[0]?.name || "", reason: "当前任务负载最低" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
     );
   } catch (err) {
     console.error(`Function error: ${err.message}`);
     return new Response(
       JSON.stringify({ error: err.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
     );
   }
 });
