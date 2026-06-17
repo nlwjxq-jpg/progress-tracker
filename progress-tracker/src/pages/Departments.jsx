@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { supabase, TABLES } from '../lib/supabase'
-import { Plus, X, Users, Briefcase } from 'lucide-react'
+import { Plus, X, Users, Building2 } from 'lucide-react'
 
 export default function Departments() {
   const [departments, setDepartments] = useState([])
