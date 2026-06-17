@@ -40,7 +40,15 @@ export default function Tasks() {
     }
   }
 
-  const deptLeaders = members.filter(m => m.role.includes("部长") || m.role.includes("副部长"))
+    function getTaskCount(memberName) {
+    if (!memberName) return 0
+    return tasks.filter(t => {
+      const wa = t.work_assignee || t.assignee || ""
+      return wa === memberName
+    }).length
+  }
+
+const deptLeaders = members.filter(m => m.role.includes("部长") || m.role.includes("副部长"))
   const workMembers = members.filter(m => !(m.role.includes("部长") || m.role.includes("副部长")))
 
   async function handleAiBatchMatch() {
@@ -65,10 +73,10 @@ export default function Tasks() {
             dept_leader: t.dept_leader || ""
           })),
           deptLeaders: deptLeaders.map(m => ({
-            name: m.name, role: m.role, skills: m.skills, task_count: m.task_count || 0
+            name: m.name, role: m.role, skills: m.skills, task_count: getTaskCount(m.name)
           })),
           workMembers: workMembers.map(m => ({
-            name: m.name, role: m.role, skills: m.skills, task_count: m.task_count || 0
+            name: m.name, role: m.role, skills: m.skills, task_count: getTaskCount(m.name)
           })),
           apiUrl
         })

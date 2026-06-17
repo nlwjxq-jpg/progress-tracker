@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react"
 import { supabase, TABLES } from "../lib/supabase"
 import { getAiApiUrl } from "../lib/deepseek"
-import { Plus, X, Users, Building2, Sparkles } from "lucide-react"
+import { Plus, X, Users, Building2, Sparkles, Edit3 } from "lucide-react"
 
 function getBatchAssignUrl() {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -14,8 +14,10 @@ export default function Departments() {
   const [tasks, setTasks] = useState([])
   const [showDeptModal, setShowDeptModal] = useState(false)
   const [showMemberModal, setShowMemberModal] = useState(false)
+  const [showEditMemberModal, setShowEditMemberModal] = useState(false)
   const [deptForm, setDeptForm] = useState({ name: "" })
   const [memberForm, setMemberForm] = useState({ name: "", role: "", skills: "", department_id: "" })
+  const [editMemberForm, setEditMemberForm] = useState(null)
   const [loading, setLoading] = useState(true)
   const [aiMatching, setAiMatching] = useState(false)
   const [aiMsg, setAiMsg] = useState("")
@@ -34,6 +36,15 @@ export default function Departments() {
       setTasks(taskData || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
+  }
+
+  // Calculate real task count per member from tasks table
+  function getMemberTaskCount(memberName) {
+    if (!memberName) return 0
+    return tasks.filter(t => {
+      const wa = t.work_assignee || t.assignee || ""
+      return wa === memberName
+    }).length
   }
 
   async function createDepartment() {
@@ -55,6 +66,29 @@ export default function Departments() {
     })
     setMemberForm({ name: "", role: "", skills: "", department_id: "" })
     setShowMemberModal(false)
+    loadData()
+  }
+
+  function openEditMember(member) {
+    setEditMemberForm({
+      id: member.id,
+      name: member.name,
+      role: member.role || "",
+      skills: member.skills || "",
+      department_id: member.department_id || ""
+    })
+    setShowEditMemberModal(true)
+  }
+
+  async function saveEditMember() {
+    if (!editMemberForm) return
+    await supabase.from(TABLES.MEMBERS).update({
+      role: editMemberForm.role.trim(),
+      skills: editMemberForm.skills.trim(),
+      department_id: editMemberForm.department_id
+    }).eq("id", editMemberForm.id)
+    setShowEditMemberModal(false)
+    setEditMemberForm(null)
     loadData()
   }
 
@@ -99,10 +133,10 @@ export default function Departments() {
             dept_leader: t.dept_leader || ""
           })),
           deptLeaders: deptLeaders.map(m => ({
-            name: m.name, role: m.role, skills: m.skills, task_count: m.task_count || 0
+            name: m.name, role: m.role, skills: m.skills, task_count: getMemberTaskCount(m.name)
           })),
           workMembers: workMembers.map(m => ({
-            name: m.name, role: m.role, skills: m.skills, task_count: m.task_count || 0
+            name: m.name, role: m.role, skills: m.skills, task_count: getMemberTaskCount(m.name)
           })),
           apiUrl
         })
@@ -206,23 +240,40 @@ export default function Departments() {
                 <p className="text-sm text-gray-400">暂无人员</p>
               ) : (
                 <ul className="space-y-2">
-                  {membersByDept[dept.id].map(member => (
-                    <li key={member.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                      <div className="flex items-center gap-2">
-                        <Users size={16} className="text-gray-400" />
-                        <div>
-                          <span className="font-medium text-sm">{member.name}</span>
-                          <span className="text-xs text-gray-400 ml-2">{member.role}</span>
+                  {membersByDept[dept.id].map(member => {
+                    const taskCount = getMemberTaskCount(member.name)
+                    return (
+                      <li key={member.id} className="flex items-start justify-between py-2.5 border-b border-gray-50 last:border-0">
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <Users size={16} className="text-gray-400 mt-0.5 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{member.name}</span>
+                              <span className="text-xs text-gray-400">{member.role}</span>
+                            </div>
+                            {member.skills && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {member.skills.split(/[\s,，]+/).filter(Boolean).map((skill, i) => (
+                                  <span key={i} className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-gray-400">{member.task_count || 0} 个任务</span>
-                        <button onClick={() => deleteMember(member.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                          <span className="text-xs text-gray-400 whitespace-nowrap">{taskCount} 个任务</span>
+                          <button onClick={() => openEditMember(member)} className="text-gray-400 hover:text-blue-500 transition-colors" title="编辑职责">
+                            <Edit3 size={13} />
+                          </button>
+                          <button onClick={() => deleteMember(member.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </div>
@@ -244,7 +295,7 @@ export default function Departments() {
         </div>
       )}
 
-      {/* Member Modal */}
+      {/* Add Member Modal */}
       {showMemberModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowMemberModal(false)}>
           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-lg space-y-4" onClick={e => e.stopPropagation()}>
@@ -255,10 +306,52 @@ export default function Departments() {
             </select>
             <input className="input-field" placeholder="姓名" value={memberForm.name} onChange={e => setMemberForm(f => ({ ...f, name: e.target.value }))} />
             <input className="input-field" placeholder="角色/职位" value={memberForm.role} onChange={e => setMemberForm(f => ({ ...f, role: e.target.value }))} />
-            <input className="input-field" placeholder="技能标签（以空格分隔，如：前端 React API）" value={memberForm.skills} onChange={e => setMemberForm(f => ({ ...f, skills: e.target.value }))} />
+            <input className="input-field" placeholder="技能/职责标签（空格分隔，如：前端 React API）" value={memberForm.skills} onChange={e => setMemberForm(f => ({ ...f, skills: e.target.value }))} />
             <div className="flex gap-2 justify-end">
               <button className="btn-secondary" onClick={() => setShowMemberModal(false)}>取消</button>
               <button className="btn-primary" onClick={createMember}>确定</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Member Modal */}
+      {showEditMemberModal && editMemberForm && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowEditMemberModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-lg space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold">编辑人员职责 - {editMemberForm.name}</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">角色/职位</label>
+              <input
+                className="input-field"
+                value={editMemberForm.role}
+                onChange={e => setEditMemberForm(f => ({ ...f, role: e.target.value }))}
+                placeholder="如：前端开发、测试工程师"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">技能/职责标签</label>
+              <input
+                className="input-field"
+                value={editMemberForm.skills}
+                onChange={e => setEditMemberForm(f => ({ ...f, skills: e.target.value }))}
+                placeholder="空格分隔，如：前端 React Vue API设计"
+              />
+              <p className="text-xs text-gray-400 mt-1">修改后将影响 AI 分配任务时的技能匹配依据</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">所属部门</label>
+              <select
+                className="input-field"
+                value={editMemberForm.department_id}
+                onChange={e => setEditMemberForm(f => ({ ...f, department_id: e.target.value }))}
+              >
+                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button className="btn-secondary" onClick={() => { setShowEditMemberModal(false); setEditMemberForm(null) }}>取消</button>
+              <button className="btn-primary" onClick={saveEditMember}>保存修改</button>
             </div>
           </div>
         </div>
