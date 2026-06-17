@@ -2,8 +2,14 @@
 import { Link } from "react-router-dom"
 import { supabase, TABLES } from "../lib/supabase"
 import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
+import { getAiApiUrl } from "../lib/deepseek"
 import { format } from "date-fns"
-import { Plus, Search, Edit, FileText } from "lucide-react"
+import { Plus, Search, Edit, FileText, Sparkles } from "lucide-react"
+
+function getFunctionUrl() {
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL
+  return `${baseUrl}/functions/v1/batch-assign`
+}
 
 export default function Tasks() {
   const [tasks, setTasks] = useState([])
@@ -14,6 +20,8 @@ export default function Tasks() {
   const [progressModal, setProgressModal] = useState(null)
   const [progressForm, setProgressForm] = useState({ last_progress: "", this_target: "" })
   const [savingProgress, setSavingProgress] = useState(false)
+  const [aiMatching, setAiMatching] = useState(false)
+  const [aiMsg, setAiMsg] = useState("")
 
   useEffect(() => { loadData() }, [])
 
@@ -29,6 +37,74 @@ export default function Tasks() {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const deptLeaders = members.filter(m => m.role.includes("部长") || m.role.includes("副部长"))
+  const workMembers = members.filter(m => !(m.role.includes("部长") || m.role.includes("副部长")))
+
+  async function handleAiBatchMatch() {
+    setAiMatching(true)
+    setAiMsg("正在调用 AI 分析...")
+    try {
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const apiUrl = getAiApiUrl()
+
+      const resp = await fetch(getFunctionUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${anonKey}`
+        },
+        body: JSON.stringify({
+          tasks: tasks.map(t => ({
+            id: t.id,
+            title: t.title,
+            description: t.description || "",
+            work_assignee: t.work_assignee || t.assignee || "",
+            dept_leader: t.dept_leader || ""
+          })),
+          deptLeaders: deptLeaders.map(m => ({
+            name: m.name, role: m.role, skills: m.skills, task_count: m.task_count || 0
+          })),
+          workMembers: workMembers.map(m => ({
+            name: m.name, role: m.role, skills: m.skills, task_count: m.task_count || 0
+          })),
+          apiUrl
+        })
+      })
+
+      const result = await resp.json()
+      if (!resp.ok) throw new Error(result.warning || result.error || "匹配失败")
+
+      const assignments = result.assignments || []
+      if (assignments.length === 0) {
+        setAiMsg("未获得 AI 匹配结果")
+        return
+      }
+
+      setAiMsg(`AI 返回 ${assignments.length} 条匹配，正在更新...`)
+      let updated = 0
+
+      for (const a of assignments) {
+        const task = tasks[a.taskIndex]
+        if (!task) continue
+        const update = {}
+        if (a.work_assignee) update.work_assignee = a.work_assignee
+        if (a.dept_leader) update.dept_leader = a.dept_leader
+        if (Object.keys(update).length === 0) continue
+
+        const { error } = await supabase.from(TABLES.TASKS).update(update).eq("id", task.id)
+        if (!error) updated++
+      }
+
+      setAiMsg(`完成：已更新 ${updated} 项任务的负责人`)
+      loadData()
+    } catch (err) {
+      setAiMsg(`AI 匹配失败：${err.message}`)
+    } finally {
+      setAiMatching(false)
+      setTimeout(() => setAiMsg(""), 5000)
     }
   }
 
@@ -84,14 +160,34 @@ export default function Tasks() {
 
   if (loading) return <div className="animate-spin w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full mx-auto mt-24" />
 
+  const unassignedCount = tasks.filter(t => !t.work_assignee && !t.assignee && !t.dept_leader).length
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">任务列表</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-gray-800">任务列表</h2>
+          <button
+            onClick={handleAiBatchMatch}
+            disabled={aiMatching || tasks.length === 0}
+            className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50"
+            title="AI 自动匹配并修正工作负责人和部门负责人"
+          >
+            <Sparkles size={16} className={aiMatching ? "animate-pulse text-blue-500" : "text-blue-500"} />
+            AI 校验修正
+          </button>
+        </div>
         <Link to="/tasks/new" className="btn-primary flex items-center gap-2">
           <Plus size={18} /> 新建任务
         </Link>
       </div>
+
+      {aiMsg && (
+        <div className={`text-sm p-3 rounded-lg ${aiMsg.includes("失败") ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-700"}`}>
+          {aiMatching && <Sparkles size={14} className="inline animate-pulse mr-1" />}
+          {aiMsg}
+        </div>
+      )}
 
       <div className="flex items-center gap-4 flex-wrap">
         <div className="relative flex-1 max-w-sm">
@@ -116,6 +212,11 @@ export default function Tasks() {
             </button>
           ))}
         </div>
+        {unassignedCount > 0 && (
+          <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+            {unassignedCount} 项未分配负责人
+          </span>
+        )}
       </div>
 
       {filteredTasks.length === 0 ? (
@@ -140,8 +241,10 @@ export default function Tasks() {
                 const workAssignee = task.work_assignee || task.assignee || ""
                 const deptLeader = task.dept_leader || ""
                 const lastMonthTarget = task.last_month_target || ""
+                const isUnassigned = !workAssignee && !deptLeader
+
                 return (
-                  <tr key={task.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <tr key={task.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isUnassigned ? "bg-orange-50/30" : ""}`}>
                     <td className="py-2.5">
                       <div className="flex items-center gap-2">
                         <div>
@@ -159,10 +262,14 @@ export default function Tasks() {
                       </span>
                     </td>
                     <td className="py-2.5">
-                      <span className="text-sm">{workAssignee || "-"}</span>
+                      <span className={`text-sm ${!workAssignee ? "text-orange-500 font-medium" : ""}`}>
+                        {workAssignee || "未分配"}
+                      </span>
                     </td>
                     <td className="py-2.5">
-                      <span className="text-sm">{deptLeader || "-"}</span>
+                      <span className={`text-sm ${!deptLeader ? "text-orange-500 font-medium" : ""}`}>
+                        {deptLeader || "未分配"}
+                      </span>
                     </td>
                     <td className="py-2.5 whitespace-nowrap">{task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "-"}</td>
                     <td className="py-2.5">
