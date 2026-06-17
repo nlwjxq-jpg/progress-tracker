@@ -4,7 +4,7 @@ import { supabase, TABLES } from "../lib/supabase"
 import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
 import { getAiApiUrl } from "../lib/deepseek"
 import { format } from "date-fns"
-import { Plus, Search, Edit, FileText, Sparkles, Wand2 } from "lucide-react"
+import { Plus, Search, Edit, FileText, Sparkles, Wand2, Trash2 } from "lucide-react"
 
 function getFunctionUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-assign` }
 function getAnalyzeUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-progress` }
@@ -21,6 +21,8 @@ export default function Tasks() {
   const [aiMatching, setAiMatching] = useState(false)
   const [aiMsg, setAiMsg] = useState("")
   const [aiAnalyzing, setAiAnalyzing] = useState(false)
+  const [selected, setSelected] = useState(new Set())
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
@@ -79,7 +81,34 @@ export default function Tasks() {
     finally { setAiMatching(false); setTimeout(() => setAiMsg(""), 5000) }
   }
 
-  const filteredTasks = tasks.filter(t => {
+  function toggleSelect(taskId) {
+    const next = new Set(selected)
+    if (next.has(taskId)) next.delete(taskId); else next.add(taskId)
+    setSelected(next)
+  }
+
+  function toggleSelectAll() {
+    const visibleIds = filteredTasks.map(t => t.id)
+    if (visibleIds.every(id => selected.has(id))) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(visibleIds))
+    }
+  }
+
+  async function deleteSelected() {
+    if (selected.size === 0) return
+    setDeleting(true)
+    try {
+      const ids = Array.from(selected)
+      await supabase.from(TABLES.TASKS).delete().in("id", ids)
+      setSelected(new Set())
+      loadData()
+    } catch (err) { console.error(err) }
+    finally { setDeleting(false) }
+  }
+
+const filteredTasks = tasks.filter(t => {
     if (filter === "overdue" && t.status !== "completed" && getDueStatus(t.due_date) !== "overdue") return false
     if (filter === "near-due" && t.status !== "completed" && getDueStatus(t.due_date) !== "near-due") return false
     if (filter === "completed" && t.status !== "completed") return false
@@ -189,7 +218,12 @@ export default function Tasks() {
         <div className="flex gap-1">{filters.map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === f.key ? "bg-blue-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{f.label}</button>
         ))}</div>
-        {unassignedCount > 0 && <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">{unassignedCount} 项未分配负责人</span>}
+        {selected.size > 0 && (
+        <button onClick={deleteSelected} disabled={deleting} className="btn-primary !bg-red-600 hover:!bg-red-700 flex items-center gap-2 text-sm">
+          <Trash2 size={16} /> {deleting ? "删除中..." : `删除选中 (${selected.size})`}
+        </button>
+      )}
+      {unassignedCount > 0 && <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">{unassignedCount} 项未分配负责人</span>}
       </div>
 
       {filteredTasks.length === 0 ? (
@@ -199,6 +233,9 @@ export default function Tasks() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-gray-500">
+                <th className="pb-2 font-medium w-8">
+                  <input type="checkbox" className="accent-blue-600" checked={filteredTasks.length > 0 && filteredTasks.every(t => selected.has(t.id))} onChange={toggleSelectAll} />
+                </th>
                 <th className="pb-2 font-medium">任务名称</th>
                 <th className="pb-2 font-medium whitespace-nowrap">上月工作目标</th>
                 <th className="pb-2 font-medium whitespace-nowrap">工作负责人</th>
@@ -215,8 +252,12 @@ export default function Tasks() {
                 const deptLeader = task.dept_leader || ""
                 const lastMonthTarget = task.last_month_target || ""
                 const isUnassigned = !workAssignee && !deptLeader
+                const isChecked = selected.has(task.id)
                 return (
-                  <tr key={task.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isUnassigned ? "bg-orange-50/30" : ""}`}>
+                  <tr key={task.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isChecked ? "bg-blue-50/50" : ""} ${isUnassigned ? "bg-orange-50/30" : ""}`}>
+                    <td className="py-2.5 pl-2">
+                      <input type="checkbox" className="accent-blue-600" checked={isChecked} onChange={() => toggleSelect(task.id)} />
+                    </td>
                     <td className="py-2.5">
                       <div className="flex items-center gap-2">
                         <div>
