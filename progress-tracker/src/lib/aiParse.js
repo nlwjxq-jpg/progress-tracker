@@ -1,23 +1,23 @@
-import { supabase } from './supabase'
-import { getAiApiUrl } from './deepseek'
+﻿import { getAiApiUrl } from './deepseek'
 
 async function callEdgeFunction(functionName, textContent) {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('未登录')
-
   const baseUrl = import.meta.env.VITE_SUPABASE_URL
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
   const apiUrl = getAiApiUrl()
 
   const response = await fetch(`${baseUrl}/functions/v1/${functionName}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`
+      'Authorization': `Bearer ${anonKey}`
     },
     body: JSON.stringify({ textContent, apiUrl })
   })
 
-  if (!response.ok) throw new Error(`Edge Function ${functionName} returned ${response.status}`)
+  if (!response.ok) {
+    const errText = await response.text().catch(() => 'unknown')
+    throw new Error(`Edge Function ${functionName} returned ${response.status}: ${errText}`)
+  }
   return response.json()
 }
 

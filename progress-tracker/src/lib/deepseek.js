@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+﻿import { supabase } from './supabase'
 
 /**
  * Get saved AI API URL from localStorage, or use default.
@@ -18,22 +18,19 @@ function getFunctionUrl() {
 
 /**
  * Recommend task assignee via Supabase Edge Function.
- * Passes the AI API URL from localStorage so user can switch between
- * official DeepSeek and company self-hosted endpoint.
+ * Uses anon key instead of user session token to avoid token expiry issues.
  * The API key stays securely in Supabase Secrets.
  */
 export async function recommendAssignee(taskTitle, taskDescription, members) {
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return ruleBasedRecommend(taskTitle, taskDescription, members)
-
     const apiUrl = getAiApiUrl()
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
     const response = await fetch(getFunctionUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
+        'Authorization': `Bearer ${anonKey}`
       },
       body: JSON.stringify({ taskTitle, taskDescription, members, apiUrl })
     })

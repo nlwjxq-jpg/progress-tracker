@@ -36,21 +36,27 @@ serve(async (req: Request) => {
       );
     }
 
-    // Truncate to ~8000 chars to stay within token limits
     const truncated = textContent.slice(0, 8000);
 
-    const response = await fetch(finalApiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          {
-            role: "system",
-            content: `你是一个工作任务分析助手。用户上传了一份年度/季度工作任务表文本，请从中提取所有任务项。
+    console.log(`Calling DeepSeek API: ${finalApiUrl} with ${truncated.length} chars`);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
+    let response;
+    try {
+      response = await fetch(finalApiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "system",
+              content: `你是一个工作任务分析助手。用户上传了一份年度/季度工作任务表文本，请从中提取所有任务项。
 
 返回一个 JSON 数组，每个元素格式：
 {
@@ -66,27 +72,50 @@ serve(async (req: Request) => {
 3. 没有明确截止日期的，due_date 填 null
 4. 只返回 JSON 数组，不要带任何 markdown 标记或解释文字
 5. 如果内容中没有任何可识别的任务，返回空数组 []`,
-          },
-          {
-            role: "user",
-            content: `请分析以下工作任务表内容，提取所有任务：\n\n${truncated}`,
-          },
-        ],
-        max_tokens: 4000,
-        temperature: 0.2,
-      }),
-    });
+            },
+            {
+              role: "user",
+              content: `请分析以下工作任务表内容，提取所有任务：\n\n${truncated}`,
+            },
+          ],
+          max_tokens: 4000,
+          temperature: 0.2,
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "unknown");
+      console.error(`DeepSeek API error: ${response.status} ${errText}`);
+      return new Response(
+        JSON.stringify({ tasks: [], warning: `AI API 返回错误 ${response.status}，请稍后重试` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const data = await response.json();
     const content: string = data.choices?.[0]?.message?.content?.trim() || "";
 
-    // Extract JSON array from response
+    console.log(`DeepSeek response: ${content.slice(0, 300)}`);
+
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
-      return new Response(
-        JSON.stringify({ tasks: JSON.parse(jsonMatch[0]) }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      try {
+        const tasks = JSON.parse(jsonMatch[0]);
+        return new Response(
+          JSON.stringify({ tasks }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (parseErr) {
+        console.error(`JSON parse error: ${parseErr.message}`);
+        return new Response(
+          JSON.stringify({ tasks: [], warning: "AI 返回格式异常，请重试", raw: content.slice(0, 200) }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     return new Response(
@@ -94,6 +123,7 @@ serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error(`Function error: ${err.message}`);
     return new Response(
       JSON.stringify({ tasks: [], error: err.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
