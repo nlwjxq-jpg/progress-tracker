@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+﻿import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import Layout from './components/Layout'
@@ -10,6 +10,7 @@ import Goals from './pages/Goals'
 import AISettings from './pages/AISettings'
 import ImportTasks from './pages/ImportTasks'
 import ImportMembers from './pages/ImportMembers'
+import ImportGoals from './pages/ImportGoals'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/ai-settings" element={<AISettings />} />
           <Route path="/import-tasks" element={<ImportTasks />} />
           <Route path="/import-members" element={<ImportMembers />} />
+          <Route path="/import-goals" element={<ImportGoals />} />
         </Route>
       </Routes>
     </AuthProvider>
