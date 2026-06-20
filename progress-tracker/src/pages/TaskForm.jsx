@@ -11,7 +11,7 @@ export default function TaskForm() {
 
   const [form, setForm] = useState({
     title: "", description: "", work_assignee: "", dept_leader: "",
-    due_date: "", goal_id: "", priority: "normal"
+    due_date: "", goal_id: "", priority: "normal", is_key: false
   })
   const [members, setMembers] = useState([])
   const [goals, setGoals] = useState([])
@@ -42,7 +42,8 @@ export default function TaskForm() {
           work_assignee: data.work_assignee || data.assignee || "",
           dept_leader: data.dept_leader || "",
           due_date: data.due_date || "", goal_id: data.goal_id || "",
-          priority: data.priority || "normal"
+          priority: data.priority || "normal",
+          is_key: data.is_key || false
         })
       })
     }
@@ -77,7 +78,7 @@ export default function TaskForm() {
         work_assignee: form.work_assignee, dept_leader: form.dept_leader,
         assignee: form.work_assignee,
         due_date: form.due_date || null, goal_id: form.goal_id || null,
-        priority: form.priority, updated_at: now
+        priority: form.priority, is_key: form.is_key, updated_at: now
       }
       if (isEdit) {
         await supabase.from(TABLES.TASKS).update(payload).eq("id", id)

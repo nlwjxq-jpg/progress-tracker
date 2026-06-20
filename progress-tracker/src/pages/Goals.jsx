@@ -2,7 +2,7 @@
 import { supabase, TABLES } from "../lib/supabase"
 import { getAiApiUrl } from "../lib/deepseek"
 import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
-import { Plus, Target, AlertTriangle, CheckCircle, Sparkles, Link2, X, Search } from "lucide-react"
+import { Plus, Target, AlertTriangle, CheckCircle, Sparkles, Link2, X, Search, Download } from "lucide-react"
 
 function getLinkUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/link-tasks-goals` }
 
@@ -82,13 +82,13 @@ export default function Goals() {
 
   async function linkTaskToGoal(taskId, goalId) {
     setLinking(true)
-    await supabase.from(TABLES.TASKS).update({ goal_id: goalId }).eq("id", taskId)
+    await supabase.from(TABLES.TASKS).update({ goal_id: goalId, is_key: true }).eq("id", taskId)
     loadData()
     setLinking(false)
   }
 
   async function unlinkTask(taskId) {
-    await supabase.from(TABLES.TASKS).update({ goal_id: null }).eq("id", taskId)
+    await supabase.from(TABLES.TASKS).update({ goal_id: null, is_key: false }).eq("id", taskId)
     loadData()
   }
 
@@ -105,6 +105,32 @@ export default function Goals() {
     ? unlinkedTasks.filter(t => t.title.toLowerCase().includes(linkSearch.toLowerCase()))
     : unlinkedTasks
 
+  function exportGoalsToExcel() {
+    const BOM = "\uFEFF"
+    const headers = ["目标标题", "目标描述", "年份", "季度", "关联任务数", "完成任务数", "逾期任务数", "任务列表"]
+    const rows = goals.map(g => {
+      const stats = getGoalStats(g.id)
+      return [
+        g.title,
+        g.description || "",
+        g.year || "",
+        g.quarter || "",
+        stats.total,
+        stats.completed,
+        stats.overdue,
+        stats.goalTasks.map(t => t.title).join("; ")
+      ]
+    })
+    const csv = BOM + headers.join(",") + "\n" + rows.map(r => r.map(c => "\"" + String(c).replace(/"/g, "\"\"") + "\"").join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "目标管理_" + new Date().toISOString().slice(0, 10) + ".csv"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (loading) return <div className="animate-spin w-8 h-8 border-4 border-blue-700 border-t-transparent rounded-full mx-auto mt-24" />
 
   return (
@@ -112,6 +138,7 @@ export default function Goals() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold text-gray-800">目标管理</h2>
+          <button onClick={exportGoalsToExcel} className="btn-secondary flex items-center gap-2 text-sm"><Download size={16} /> 导出Excel</button>
           <button onClick={handleAiLink} disabled={aiLinking || tasks.length === 0 || goals.length === 0} className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50" title="AI 自动关联任务与目标">
             <Sparkles size={16} className={aiLinking ? "animate-pulse text-blue-500" : "text-blue-500"} /> AI 关联任务
           </button>

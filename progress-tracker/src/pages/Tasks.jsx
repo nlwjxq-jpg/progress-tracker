@@ -108,7 +108,7 @@ export default function Tasks() {
     finally { setDeleting(false) }
   }
 
-const filteredTasks = tasks.filter(t => {
+  const filteredTasks = sortedTasks.filter(t => {
     if (filter === "overdue" && t.status !== "completed" && getDueStatus(t.due_date) !== "overdue") return false
     if (filter === "near-due" && t.status !== "completed" && getDueStatus(t.due_date) !== "near-due") return false
     if (filter === "completed" && t.status !== "completed") return false
@@ -224,6 +224,7 @@ const filteredTasks = tasks.filter(t => {
         </button>
       )}
       {unassignedCount > 0 && <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">{unassignedCount} 项未分配负责人</span>}
+        <button onClick={exportToExcel} className="btn-secondary flex items-center gap-2 text-sm"><Download size={16} /> 导出Excel</button>
       </div>
 
       {filteredTasks.length === 0 ? (
@@ -236,6 +237,7 @@ const filteredTasks = tasks.filter(t => {
                 <th className="pb-2 font-medium w-8">
                   <input type="checkbox" className="accent-blue-600" checked={filteredTasks.length > 0 && filteredTasks.every(t => selected.has(t.id))} onChange={toggleSelectAll} />
                 </th>
+                <th className="pb-2 font-medium">任务类型</th>
                 <th className="pb-2 font-medium">任务名称</th>
                 <th className="pb-2 font-medium whitespace-nowrap">上月工作目标</th>
                 <th className="pb-2 font-medium whitespace-nowrap">工作负责人</th>
