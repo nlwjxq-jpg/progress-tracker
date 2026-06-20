@@ -4,7 +4,7 @@ import { supabase, TABLES } from "../lib/supabase"
 import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
 import { getAiApiUrl } from "../lib/deepseek"
 import { format } from "date-fns"
-import { Plus, Search, Edit, FileText, Sparkles, Wand2, Trash2 } from "lucide-react"
+import { Plus, Search, Edit, FileText, Sparkles, Wand2, Trash2, Download } from "lucide-react"
 
 function getFunctionUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-assign` }
 function getAnalyzeUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-progress` }
@@ -45,6 +45,36 @@ export default function Tasks() {
     if (!memberName) return 0
     return tasks.filter(t => { const wa = t.work_assignee || t.assignee || ""; return wa === memberName }).length
   }
+
+  function exportToExcel() {
+    const BOM = "\uFEFF"
+    const headers = ["任务标题", "任务类型", "上月工作目标", "工作负责人", "部门负责人", "优先级", "截止日期", "状态", "进度"]
+    const rows = sortedTasks.map(t => [
+      t.title,
+      t.is_key ? "重点任务" : "日常任务",
+      t.last_target || "",
+      t.work_assignee || t.assignee || "",
+      t.dept_leader || "",
+      t.priority || "",
+      t.due_date || "",
+      STATUS_LABELS[t.status] || t.status || "",
+      (t.progress || 0) + "%"
+    ])
+    const csv = BOM + headers.join(",") + "\n" + rows.map(r => r.map(c => "\"" + String(c).replace(/"/g, "\"\"") + "\"").join(",")).join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "任务列表_" + new Date().toISOString().slice(0, 10) + ".csv"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const sortedTasks = [...tasks].sort((a, b) => {
+    if (a.is_key && !b.is_key) return -1
+    if (!a.is_key && b.is_key) return 1
+    return 0
+  })
 
   async function handleAiBatchMatch() {
     setAiMatching(true); setAiMsg("正在调用 AI 分析...")
