@@ -9,7 +9,6 @@ export default function Login() {
   const [isRegister, setIsRegister] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
   const [deptId, setDeptId] = useState('')
   const [departments, setDepartments] = useState([])
   const [error, setError] = useState('')
@@ -25,16 +24,16 @@ export default function Login() {
     setLoading(true)
     try {
       if (isRegister) {
-        if (!name.trim()) { setError('请输入姓名'); setLoading(false); return }
         if (!deptId) { setError('请选择所属部门'); setLoading(false); return }
 
         const { data: authData, error: signUpErr } = await supabase.auth.signUp({ email, password })
         if (signUpErr) throw signUpErr
 
-        // Auto-create department_members record
+        // Auto-create department_members record (name derived from email)
         if (authData?.user) {
+          const autoName = email.split('@')[0]
           await supabase.from(TABLES.MEMBERS).insert({
-            name: name.trim(),
+            name: autoName,
             role: '成员',
             department_id: deptId,
             user_id: authData.user.id,
@@ -65,10 +64,6 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {isRegister && (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">姓名</label>
-                <input type="text" className="input-field" value={name} onChange={e => setName(e.target.value)} required placeholder="您的真实姓名" />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">所属部门</label>
                 <select className="input-field" value={deptId} onChange={e => setDeptId(e.target.value)} required>
