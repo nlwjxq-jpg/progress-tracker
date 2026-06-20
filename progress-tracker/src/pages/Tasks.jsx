@@ -286,9 +286,14 @@ export default function Tasks() {
                 const isUnassigned = !workAssignee && !deptLeader
                 const isChecked = selected.has(task.id)
                 return (
-                  <tr key={task.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isChecked ? "bg-blue-50/50" : ""} ${isUnassigned ? "bg-orange-50/30" : ""}`}>
+                  <tr key={task.id} className={`border-b border-gray-50 hover:bg-gray-50 ${isChecked ? "bg-blue-50/50" : ""} ${isUnassigned ? "bg-orange-50/30" : ""} ${task.is_key ? "bg-gradient-to-r from-blue-50/30" : ""}`}>
                     <td className="py-2.5 pl-2">
                       <input type="checkbox" className="accent-blue-600" checked={isChecked} onChange={() => toggleSelect(task.id)} />
+                    </td>
+                    <td className="py-2.5">
+                      <span className={`badge text-xs ${task.is_key ? "badge-blue" : "badge-gray"}`}>
+                        {task.is_key ? "重点任务" : "日常任务"}
+                      </span>
                     </td>
                     <td className="py-2.5">
                       <div className="flex items-center gap-2">
