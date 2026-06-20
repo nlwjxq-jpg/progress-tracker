@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { supabase, TABLES } from "../lib/supabase"
+import { useAuth } from "../context/AuthContext"
 import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
 import { getAiApiUrl } from "../lib/deepseek"
 import { format } from "date-fns"
@@ -24,12 +25,18 @@ export default function Tasks() {
   const [selected, setSelected] = useState(new Set())
   const [deleting, setDeleting] = useState(false)
 
+  const { user, isAdmin, userDeptId } = useAuth()
+
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     try {
+      let taskQuery = supabase.from(TABLES.TASKS).select("*").order("created_at", { ascending: false })
+      if (!isAdmin && userDeptId) {
+        taskQuery = taskQuery.eq("department_id", userDeptId)
+      }
       const [{ data: taskData }, { data: memberData }] = await Promise.all([
-        supabase.from(TABLES.TASKS).select("*").order("created_at", { ascending: false }),
+        taskQuery,
         supabase.from(TABLES.MEMBERS).select("*")
       ])
       setTasks(taskData || [])

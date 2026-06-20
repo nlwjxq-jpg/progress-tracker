@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react"
 import { supabase, TABLES } from "../lib/supabase"
+import { useAuth } from "../context/AuthContext"
 import { getAiApiUrl } from "../lib/deepseek"
 import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
 import { Plus, Target, AlertTriangle, CheckCircle, Sparkles, Link2, X, Search, Download } from "lucide-react"
@@ -18,13 +19,21 @@ export default function Goals() {
   const [linkSearch, setLinkSearch] = useState("")
   const [linking, setLinking] = useState(false)
 
+  const { isAdmin, userDeptId } = useAuth()
+
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     try {
+      let goalQuery = supabase.from("goals").select("*").order("created_at", { ascending: false })
+      let taskQuery = supabase.from(TABLES.TASKS).select("*").order("created_at", { ascending: false })
+      if (!isAdmin && userDeptId) {
+        goalQuery = goalQuery.eq("department_id", userDeptId)
+        taskQuery = taskQuery.eq("department_id", userDeptId)
+      }
       const [{ data: goalList }, { data: taskList }] = await Promise.all([
-        supabase.from("goals").select("*").order("created_at", { ascending: false }),
-        supabase.from(TABLES.TASKS).select("*").order("created_at", { ascending: false })
+        goalQuery,
+        taskQuery
       ])
       setGoals(goalList || [])
       setTasks(taskList || [])
@@ -36,7 +45,7 @@ export default function Goals() {
     if (!form.title.trim()) return
     await supabase.from("goals").insert({
       title: form.title.trim(), description: form.description.trim(),
-      quarter: form.quarter, year: form.year, created_at: new Date().toISOString()
+      quarter: form.quarter, year: form.year, department_id: userDeptId || null, created_at: new Date().toISOString()
     })
     setForm({ title: "", description: "", quarter: "", year: new Date().getFullYear() })
     setShowModal(false)

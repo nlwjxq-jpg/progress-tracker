@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, TABLES } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import { getDueStatus, STATUS_LABELS } from '../lib/dueStatus'
 import { format } from 'date-fns'
 import { Plus, AlertTriangle, CheckCircle, Clock, Users } from 'lucide-react'
@@ -37,7 +38,12 @@ export default function Dashboard() {
         }
       })
 
-      setStats({ total, overdue, nearDue, completed, members: 0 })
+      let memberQuery = supabase.from(TABLES.MEMBERS).select('*')
+      if (!isAdmin && userDeptId) {
+        memberQuery = memberQuery.eq('department_id', userDeptId)
+      }
+      const { data: deptMembers } = await memberQuery
+      setStats({ total, overdue, nearDue, completed, members: deptMembers?.length || 0 })
       setRecentTasks(tasks.slice(0, 6))
 
       // Goal gap detection

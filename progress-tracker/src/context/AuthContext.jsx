@@ -6,13 +6,15 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [userDeptId, setUserDeptId] = useState(null)
+  const [userMemberId, setUserMemberId] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        checkAdminRole(session.user.id)
+        loadUserInfo(session.user.id)
       } else {
         setLoading(false)
       }
@@ -21,9 +23,11 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        checkAdminRole(session.user.id)
+        loadUserInfo(session.user.id)
       } else {
         setIsAdmin(false)
+        setUserDeptId(null)
+        setUserMemberId(null)
         setLoading(false)
       }
     })
@@ -31,12 +35,19 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  async function checkAdminRole(userId) {
+  async function loadUserInfo(userId) {
     try {
-      const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).single()
-      setIsAdmin(data?.role === 'admin')
+      const [{ data: roleData }, { data: memberData }] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+        supabase.from('department_members').select('id, department_id').eq('user_id', userId).maybeSingle()
+      ])
+      setIsAdmin(roleData?.role === 'admin')
+      setUserDeptId(memberData?.department_id || null)
+      setUserMemberId(memberData?.id || null)
     } catch {
       setIsAdmin(false)
+      setUserDeptId(null)
+      setUserMemberId(null)
     } finally {
       setLoading(false)
     }
@@ -55,7 +66,7 @@ export function AuthProvider({ children }) {
   const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, isAdmin, userDeptId, userMemberId, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   )

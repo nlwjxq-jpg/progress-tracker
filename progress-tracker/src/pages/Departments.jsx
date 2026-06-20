@@ -78,17 +78,20 @@ export default function Departments() {
       name: member.name,
       role: member.role || "",
       skills: member.skills || "",
-      department_id: member.department_id || ""
+      department_id: member.department_id || "",
+      user_id: member.user_id || ""
     })
     setShowEditMemberModal(true)
   }
 
   async function saveEditMember() {
     if (!editMemberForm) return
+    const userId = editMemberForm.user_id?.trim() || null
     await supabase.from(TABLES.MEMBERS).update({
       role: editMemberForm.role.trim(),
       skills: editMemberForm.skills.trim(),
-      department_id: editMemberForm.department_id
+      department_id: editMemberForm.department_id,
+      user_id: userId
     }).eq("id", editMemberForm.id)
     setShowEditMemberModal(false)
     setEditMemberForm(null)
@@ -351,6 +354,16 @@ export default function Departments() {
               >
                 {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">关联用户账号 (UUID)</label>
+              <input
+                className="input-field"
+                value={editMemberForm.user_id || ""}
+                onChange={e => setEditMemberForm(f => ({ ...f, user_id: e.target.value }))}
+                placeholder="从 Supabase Auth Users 复制 UUID"
+              />
+              <p className="text-xs text-gray-400 mt-1">填入用户UUID后，该员工登录即只能看到本部门数据</p>
             </div>
             <div className="flex gap-2 justify-end">
               <button className="btn-secondary" onClick={() => { setShowEditMemberModal(false); setEditMemberForm(null) }}>取消</button>

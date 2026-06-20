@@ -1,6 +1,7 @@
 ﻿import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
+import { useAuth } from "../context/AuthContext"
 import { parseFileContent } from "../lib/fileParser"
 import { getAiApiUrl } from "../lib/deepseek"
 import { Upload, Sparkles, CheckCircle, Target, AlertTriangle } from "lucide-react"
@@ -20,6 +21,9 @@ export default function ImportGoals() {
   const [error, setError] = useState("")
   const [warning, setWarning] = useState("")
   const [importResult, setImportResult] = useState({ added: 0, skipped: 0 })
+  const [deptId, setDeptId] = useState('')
+  const [departments, setDepartments] = useState([])
+  const { isAdmin, userDeptId } = useAuth()
 
   const handleFileChange = async (e) => {
     const f = e.target.files?.[0]
@@ -108,6 +112,16 @@ export default function ImportGoals() {
       {step === "upload" && (
         <div className="card space-y-4">
           <p className="text-sm text-gray-500">上传 Excel / CSV / Word / TXT 格式的目标文档，AI 将自动识别并提取年度/季度目标。</p>
+
+          {isAdmin && departments.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">导入到部门</label>
+              <select className="input-field max-w-xs" value={deptId} onChange={e => setDeptId(e.target.value)}>
+                <option value="">-- 选择部门 --</option>
+                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+          )}
 
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors">
             <Upload size={40} className="mx-auto text-gray-300 mb-3" />

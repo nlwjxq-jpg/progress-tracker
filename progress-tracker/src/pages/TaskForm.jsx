@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useCallback } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { supabase, TABLES } from "../lib/supabase"
+import { useAuth } from "../context/AuthContext"
 import { recommendAssignee } from "../lib/deepseek"
 import { ArrowLeft, Sparkles, Save } from "lucide-react"
 
@@ -18,6 +19,7 @@ export default function TaskForm() {
   const [aiReason, setAiReason] = useState("")
   const [aiLoading, setAiLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const { userDeptId } = useAuth()
 
   const deptLeaders = members.filter(m => m.role.includes("部长") || m.role.includes("副部长"))
   const workMembers = members.filter(m => !(m.role.includes("部长") || m.role.includes("副部长")))
@@ -83,7 +85,7 @@ export default function TaskForm() {
       if (isEdit) {
         await supabase.from(TABLES.TASKS).update(payload).eq("id", id)
       } else {
-        await supabase.from(TABLES.TASKS).insert({ ...payload, created_at: now })
+        await supabase.from(TABLES.TASKS).insert({ ...payload, department_id: userDeptId || null, created_at: now })
       }
       navigate("/tasks")
     } catch (err) { console.error(err) }
