@@ -20,21 +20,29 @@ export default function Registrations() {
   async function handleApprove(req) {
     setActionMsg('')
     try {
-      // Update request status
-      await supabase.from('registration_requests').update({
-        status: 'approved',
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: user.id
-      }).eq('id', req.id)
+      // Call Edge Function to create user + department_member
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/approve-registration`
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const resp = await fetch(funcUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${anonKey}`
+        },
+        body: JSON.stringify({
+          request_id: req.id,
+          name: req.name,
+          email: req.email,
+          department_id: req.department_id
+        })
+      })
 
-      // Check if user already exists in auth (they might have registered via another flow)
-      // If not, we just approve the request; the user still needs to sign up via Supabase Auth
-      // The actual sign-up and department_members creation happens when they confirm email
-      // For now, just approve so they can sign up and then we auto-create member record
+      const result = await resp.json()
+      if (!resp.ok) throw new Error(result.error || '审批失败')
 
-      setActionMsg(`已批准 ${req.name} 的注册申请`)
+      setActionMsg(`已批准 ${req.name}，账号已创建，初始密码为注册时填写的密码`)
       loadRequests()
-      setTimeout(() => setActionMsg(''), 4000)
+      setTimeout(() => setActionMsg(''), 5000)
     } catch (err) {
       setActionMsg('操作失败: ' + err.message)
     }
