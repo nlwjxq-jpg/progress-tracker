@@ -10,6 +10,7 @@ import Goals from './pages/Goals'
 import AISettings from './pages/AISettings'
 import ImportTasks from './pages/ImportTasks'
 import ImportMembers from './pages/ImportMembers'
+import Registrations from "./pages/Registrations"
 import ImportGoals from './pages/ImportGoals'
 
 function ProtectedRoute({ children }) {
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/ai-settings" element={<AISettings />} />
           <Route path="/import-tasks" element={<ImportTasks />} />
           <Route path="/import-members" element={<ImportMembers />} />
+          <Route path="/registrations" element={<Registrations />} />
           <Route path="/import-goals" element={<ImportGoals />} />
         </Route>
       </Routes>

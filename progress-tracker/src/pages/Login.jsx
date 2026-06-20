@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext'
 import { supabase, TABLES } from '../lib/supabase'
 
 export default function Login() {
-  const { signIn, signUp } = useAuth()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
   const [isRegister, setIsRegister] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
   const [deptId, setDeptId] = useState('')
   const [departments, setDepartments] = useState([])
   const [error, setError] = useState('')
@@ -24,24 +25,29 @@ export default function Login() {
     setLoading(true)
     try {
       if (isRegister) {
+        if (!name.trim()) { setError('请输入姓名'); setLoading(false); return }
         if (!deptId) { setError('请选择所属部门'); setLoading(false); return }
 
-        const { data: authData, error: signUpErr } = await supabase.auth.signUp({ email, password })
-        if (signUpErr) throw signUpErr
-
-        // Auto-create department_members record (name derived from email)
-        if (authData?.user) {
-          const autoName = email.split('@')[0]
-          await supabase.from(TABLES.MEMBERS).insert({
-            name: autoName,
-            role: '成员',
-            department_id: deptId,
-            user_id: authData.user.id,
-            task_count: 0
-          })
+        // Submit registration request for admin approval
+        const dept = departments.find(d => d.id === deptId)
+        const { error: insertErr } = await supabase.from('registration_requests').insert({
+          email: email.trim(),
+          name: name.trim(),
+          department_id: deptId,
+          department_name: dept?.name || '',
+          status: 'pending'
+        })
+        if (insertErr) {
+          if (insertErr.code === '23505') {
+            setError('该邮箱已提交过注册申请，请等待管理员审批')
+          } else {
+            throw insertErr
+          }
+          setLoading(false)
+          return
         }
 
-        setError('注册成功！请检查邮箱确认链接后重新登录。')
+        setError('注册申请已提交，请等待管理员审批后登录。')
       } else {
         await signIn(email, password)
         navigate('/')
@@ -65,6 +71,10 @@ export default function Login() {
           {isRegister && (
             <>
               <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">姓名</label>
+                <input type="text" className="input-field" value={name} onChange={e => setName(e.target.value)} required placeholder="您的真实姓名" />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">所属部门</label>
                 <select className="input-field" value={deptId} onChange={e => setDeptId(e.target.value)} required>
                   <option value="">-- 选择部门 --</option>
@@ -84,18 +94,18 @@ export default function Login() {
           </div>
 
           {error && (
-            <div className={`text-sm p-3 rounded-lg ${error.includes('成功') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>{error}</div>
+            <div className={`text-sm p-3 rounded-lg ${error.includes('成功') || error.includes('已提交') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>{error}</div>
           )}
 
           <button type="submit" className="btn-primary w-full" disabled={loading}>
-            {loading ? '处理中...' : isRegister ? '注册' : '登录'}
+            {loading ? '处理中...' : isRegister ? '提交注册申请' : '登录'}
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-400 mt-4">
           {isRegister ? '已有账号？' : '没有账号？'}
           <button type="button" className="text-blue-600 ml-1 hover:underline" onClick={() => { setIsRegister(!isRegister); setError('') }}>
-            {isRegister ? '去登录' : '去注册'}
+            {isRegister ? '去登录' : '申请注册'}
           </button>
         </p>
       </div>
