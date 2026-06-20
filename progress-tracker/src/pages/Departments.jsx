@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from "react"
 import { supabase, TABLES } from "../lib/supabase"
+import { useAuth } from "../context/AuthContext"
 import { getAiApiUrl } from "../lib/deepseek"
 import { Plus, X, Users, Building2, Sparkles, Edit3 } from "lucide-react"
 
@@ -21,6 +22,8 @@ export default function Departments() {
   const [loading, setLoading] = useState(true)
   const [aiMatching, setAiMatching] = useState(false)
   const [aiMsg, setAiMsg] = useState("")
+
+  const { isAdmin } = useAuth()
 
   useEffect(() => { loadData() }, [])
 
