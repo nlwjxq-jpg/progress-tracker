@@ -33,6 +33,7 @@ export default function Registrations() {
           request_id: req.id,
           name: req.name,
           email: req.email,
+          password: req.password,
           department_id: req.department_id
         })
       })

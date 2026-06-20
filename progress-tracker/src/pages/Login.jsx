@@ -33,6 +33,7 @@ export default function Login() {
         const { error: insertErr } = await supabase.from('registration_requests').insert({
           email: email.trim(),
           name: name.trim(),
+          password: password,
           department_id: deptId,
           department_name: dept?.name || '',
           status: 'pending'
