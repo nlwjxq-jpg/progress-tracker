@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { Plus, AlertTriangle, CheckCircle, Clock, Users } from 'lucide-react'
 
 export default function Dashboard() {
+  const { isAdmin, userDeptId } = useAuth()
   const [stats, setStats] = useState({ total: 0, overdue: 0, nearDue: 0, completed: 0, members: 0 })
   const [recentTasks, setRecentTasks] = useState([])
   const [gaps, setGaps] = useState([])
