@@ -18,6 +18,7 @@ export default function Goals() {
   const [linkModal, setLinkModal] = useState(null)
   const [linkSearch, setLinkSearch] = useState("")
   const [linking, setLinking] = useState(false)
+  const [selectedGoals, setSelectedGoals] = useState(new Set())
 
   const { isAdmin, isDeptAdmin, userDeptId } = useAuth()
 
@@ -109,6 +110,20 @@ export default function Goals() {
     return { goalTasks, total, completed, overdue, hasTasks: total > 0 }
   }
 
+  function toggleGoalSelect(goalId) {
+    const next = new Set(selectedGoals)
+    if (next.has(goalId)) next.delete(goalId); else next.add(goalId)
+    setSelectedGoals(next)
+  }
+
+  function toggleAllGoals() {
+    if (selectedGoals.size === goals.length) {
+      setSelectedGoals(new Set())
+    } else {
+      setSelectedGoals(new Set(goals.map(g => g.id)))
+    }
+  }
+
   const unlinkedTasks = tasks.filter(t => !t.goal_id)
   const filteredUnlinked = linkSearch
     ? unlinkedTasks.filter(t => t.title.toLowerCase().includes(linkSearch.toLowerCase()))
@@ -147,6 +162,7 @@ export default function Goals() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold text-gray-800">目标管理</h2>
+          <button onClick={toggleAllGoals} className="text-sm text-blue-600 hover:underline">{selectedGoals.size === goals.length && goals.length > 0 ? "取消全选" : "全选"}</button>
           <button onClick={exportGoalsToExcel} className="btn-secondary flex items-center gap-2 text-sm"><Download size={16} /> 导出Excel</button>
           <button onClick={handleAiLink} disabled={aiLinking || tasks.length === 0 || goals.length === 0} className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50" title="AI 自动关联任务与目标">
             <Sparkles size={16} className={aiLinking ? "animate-pulse text-blue-500" : "text-blue-500"} /> AI 关联任务

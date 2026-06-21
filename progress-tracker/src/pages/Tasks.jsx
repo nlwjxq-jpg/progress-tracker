@@ -24,6 +24,9 @@ export default function Tasks() {
   const [aiAnalyzing, setAiAnalyzing] = useState(false)
   const [selected, setSelected] = useState(new Set())
   const [deleting, setDeleting] = useState(false)
+  const [selfOnly, setSelfOnly] = useState(false)
+  const [reportGenerating, setReportGenerating] = useState(false)
+  const [reportMsg, setReportMsg] = useState("")
 
   const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
 
@@ -54,18 +57,24 @@ export default function Tasks() {
   }
 
   function exportToExcel() {
+    const sourceTasks = selected.size > 0 ? sortedTasks.filter(t => selected.has(t.id)) : sortedTasks
+    if (sourceTasks.length === 0) return
     const BOM = "\uFEFF"
-    const headers = ["任务标题", "任务类型", "上月工作目标", "工作负责人", "部门负责人", "优先级", "截止日期", "状态", "进度"]
-    const rows = sortedTasks.map(t => [
+    const headers = ["序号", "任务标题", "任务类型", "工作负责人", "部门负责人", "优先级", "状态", "进度%", "上月工作目标", "上月工作进展", "本月工作目标", "截止日期", "任务描述"]
+    const rows = sourceTasks.map((t, i) => [
+      i + 1,
       t.title,
       t.is_key ? "重点任务" : "日常任务",
-      t.last_target || "",
       t.work_assignee || t.assignee || "",
       t.dept_leader || "",
       t.priority || "",
-      t.due_date || "",
       STATUS_LABELS[t.status] || t.status || "",
-      (t.progress || 0) + "%"
+      (t.progress || 0) + "%",
+      t.last_month_target || "",
+      t.last_month_progress || "",
+      t.this_month_target || "",
+      t.due_date || "",
+      (t.description || "").slice(0, 200)
     ])
     const csv = BOM + headers.join(",") + "\n" + rows.map(r => r.map(c => "\"" + String(c).replace(/"/g, "\"\"") + "\"").join(",")).join("\n")
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
@@ -75,6 +84,46 @@ export default function Tasks() {
     a.download = "任务列表_" + new Date().toISOString().slice(0, 10) + ".csv"
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  async function generateMonthlyReport(month) {
+    const sourceTasks = selected.size > 0 ? sortedTasks.filter(t => selected.has(t.id)) : sortedTasks
+    if (sourceTasks.length === 0) { setReportMsg("请先选择任务"); return }
+    setReportGenerating(true)
+    setReportMsg("正在生成月报...")
+    try {
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-report`
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const tasksData = sourceTasks.map(t => ({
+        title: t.title,
+        is_key: t.is_key,
+        progress: t.progress || 0,
+        status: t.status,
+        last_month_progress: t.last_month_progress || "",
+        last_month_target: t.last_month_target || "",
+        this_month_target: t.this_month_target || ""
+      }))
+      const resp = await fetch(funcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+        body: JSON.stringify({ tasks: tasksData, month, apiUrl: getAiApiUrl() })
+      })
+      const result = await resp.json()
+      if (!resp.ok) throw new Error(result.error || "生成失败")
+      // Download the Word doc
+      const docContent = result.report || result.content || ""
+      const blob = new Blob(["\uFEFF" + docContent], { type: "application/msword;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `工作月报_${month}_${new Date().toISOString().slice(0,10)}.doc`
+      a.click()
+      URL.revokeObjectURL(url)
+      setReportMsg("月报已生成并下载")
+      setTimeout(() => setReportMsg(""), 4000)
+    } catch (err) {
+      setReportMsg("生成失败: " + err.message)
+    } finally { setReportGenerating(false) }
   }
 
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -151,6 +200,13 @@ export default function Tasks() {
     if (filter === "completed" && t.status !== "completed") return false
     if (filter === "active" && t.status === "completed") return false
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
+    if (selfOnly) {
+      const memberName = members.find(m => m.user_id === user?.id)?.name
+      if (!memberName) return false
+      const wa = t.work_assignee || t.assignee || ""
+      const dl = t.dept_leader || ""
+      if (wa !== memberName && dl !== memberName) return false
+    }
     return true
   })
 
@@ -241,6 +297,9 @@ export default function Tasks() {
         <Link to="/tasks/new" className="btn-primary flex items-center gap-2"><Plus size={18} /> 新建任务</Link>
       </div>
 
+      {reportMsg && (
+        <div className={`text-sm p-3 rounded-lg ${reportMsg.includes("失败") ? "bg-red-50 text-red-600" : reportMsg.includes("生成中") ? "bg-blue-50 text-blue-700" : "bg-green-50 text-green-700"}`}>{reportMsg}</div>
+      )}
       {aiMsg && (
         <div className={`text-sm p-3 rounded-lg ${aiMsg.includes("失败") ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-700"}`}>
           {aiMatching && <Sparkles size={14} className="inline animate-pulse mr-1" />}{aiMsg}
@@ -252,7 +311,13 @@ export default function Tasks() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input className="input-field pl-9" placeholder="搜索任务..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="flex gap-1">{filters.map(f => (
+        <div className="flex gap-1">
+          {!isAdmin && !isDeptAdmin && (
+            <button onClick={() => setSelfOnly(!selfOnly)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selfOnly ? "bg-green-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+              仅本人
+            </button>
+          )}
+          {filters.map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === f.key ? "bg-blue-700 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{f.label}</button>
         ))}</div>
         {selected.size > 0 && (
@@ -262,6 +327,8 @@ export default function Tasks() {
       )}
       {unassignedCount > 0 && <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">{unassignedCount} 项未分配负责人</span>}
         <button onClick={exportToExcel} className="btn-secondary flex items-center gap-2 text-sm"><Download size={16} /> 导出Excel</button>
+        <button onClick={() => generateMonthlyReport("current")} disabled={reportGenerating} className="btn-secondary flex items-center gap-2 text-sm" title="生成当月选中任务的月度报告"><FileText size={16} /> {reportGenerating ? "生成中..." : "当月月报"}</button>
+        <button onClick={() => generateMonthlyReport("last")} disabled={reportGenerating} className="btn-secondary flex items-center gap-2 text-sm" title="生成上月选中任务的月度报告"><FileText size={16} /> {reportGenerating ? "生成中..." : "上月月报"}</button>
       </div>
 
       {filteredTasks.length === 0 ? (
