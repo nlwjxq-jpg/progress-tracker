@@ -106,7 +106,7 @@ export default function Tasks() {
       const resp = await fetch(funcUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
-        body: JSON.stringify({ tasks: tasksData, month, apiUrl: getAiApiUrl() })
+        body: JSON.stringify({ tasks: tasksData, month, apiUrl: getAiApiUrl(), apiKey: localStorage.getItem("deepseek_api_key") || "" })
       })
       const result = await resp.json()
       if (!resp.ok) throw new Error(result.error || "生成失败")
