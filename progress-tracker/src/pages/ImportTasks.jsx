@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, TABLES } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
