@@ -54,7 +54,8 @@ export default function Departments() {
     if (!memberName) return 0
     return tasks.filter(t => {
       const wa = t.work_assignee || t.assignee || ""
-      return wa === memberName
+      const dl = t.dept_leader || ""
+      return wa === memberName || dl === memberName
     }).length
   }
 
