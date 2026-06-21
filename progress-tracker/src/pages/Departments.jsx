@@ -37,9 +37,13 @@ export default function Departments() {
       ])
       setDepartments(depts || [])
       // Load user_roles to determine dept_admin status
-      const { data: roles } = await supabase.from('user_roles').select('user_id, role, department_id')
-      const deptAdminUserIds = new Set((roles || []).filter(r => r.role === 'dept_admin').map(r => r.user_id))
-      setMembers((membs || []).map(m => ({ ...m, _isDeptAdmin: m.user_id && deptAdminUserIds.has(m.user_id) })))
+      try {
+        const { data: roles } = await supabase.from('user_roles').select('user_id, role, department_id')
+        const deptAdminUserIds = new Set((roles || []).filter(r => r.role === 'dept_admin').map(r => r.user_id))
+        setMembers((membs || []).map(m => ({ ...m, _isDeptAdmin: m.user_id && deptAdminUserIds.has(m.user_id) })))
+      } catch {
+        setMembers(membs || [])
+      }
       setTasks(taskData || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
