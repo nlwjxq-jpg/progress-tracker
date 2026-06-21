@@ -291,7 +291,7 @@ export default function Departments() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <span className="text-xs text-gray-400 whitespace-nowrap">{taskCount} 个任务</span>
-                          {canEdit && member.user_id && (
+                          {isAdmin && member.user_id && (
                             <button onClick={() => toggleDeptAdmin(member)}
                               className={member._isDeptAdmin ? "text-yellow-500 hover:text-yellow-700" : "text-gray-400 hover:text-yellow-500"}
                               title={member._isDeptAdmin ? "取消部门管理员" : "设为部门管理员"}
