@@ -91,6 +91,7 @@ export default function ImportGoals() {
           description: (goal.description || "").trim(),
           quarter: goal.quarter || null,
           year: goal.year || new Date().getFullYear(),
+          department_id: effectiveDeptId || null,
           created_at: now
         })
         if (!insertErr) { added++; existingTitles.add(goal.title.trim()) }

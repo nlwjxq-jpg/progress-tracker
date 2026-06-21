@@ -117,6 +117,7 @@ export default function ImportTasks() {
           priority: task.priority || 'normal',
           status: 'pending',
           progress: 0,
+          department_id: effectiveDeptId || null,
           created_at: now,
           updated_at: now
         })
