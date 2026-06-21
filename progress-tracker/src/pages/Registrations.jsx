@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, TABLES } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { Check, X, UserCheck, Clock } from 'lucide-react'
+import { Check, X, UserCheck, Clock, Trash2 } from 'lucide-react'
 
 export default function Registrations() {
   const { isAdmin, user } = useAuth()
@@ -66,6 +66,34 @@ export default function Registrations() {
     }
   }
 
+  async function handleDelete(req) {
+    if (!confirm(`确定删除 ${req.name} (${req.email}) 的注册申请和相关账号？此操作不可撤销。`)) return
+    setActionMsg('')
+    try {
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const resp = await fetch(funcUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${anonKey}`
+        },
+        body: JSON.stringify({
+          request_id: req.id,
+          email: req.email,
+          name: req.name
+        })
+      })
+      const result = await resp.json()
+      if (!resp.ok) throw new Error(result.error || '删除失败')
+      setActionMsg(`已删除 ${req.name} 的账号和注册申请`)
+      loadRequests()
+      setTimeout(() => setActionMsg(''), 4000)
+    } catch (err) {
+      setActionMsg('操作失败: ' + err.message)
+    }
+  }
+
   const pendingCount = requests.filter(r => r.status === 'pending').length
 
   if (!isAdmin) {
@@ -123,6 +151,7 @@ export default function Registrations() {
                         </div>
                       )}
                       {req.status !== 'pending' && <span className="text-xs text-gray-400">{new Date(req.reviewed_at).toLocaleDateString('zh-CN')}</span>}
+                      <button onClick={() => handleDelete(req)} className="text-gray-400 hover:text-red-500 ml-2" title="删除账号"><Trash2 size={14} /></button>
                     </td>
                   </tr>
                 ))}
