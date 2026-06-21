@@ -36,7 +36,10 @@ export default function Departments() {
         supabase.from(TABLES.TASKS).select("*")
       ])
       setDepartments(depts || [])
-      setMembers(membs || [])
+      // Load user_roles to determine dept_admin status
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role, department_id')
+      const deptAdminUserIds = new Set((roles || []).filter(r => r.role === 'dept_admin').map(r => r.user_id))
+      setMembers((membs || []).map(m => ({ ...m, _isDeptAdmin: m.user_id && deptAdminUserIds.has(m.user_id) })))
       setTasks(taskData || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
@@ -70,6 +73,23 @@ export default function Departments() {
     })
     setMemberForm({ name: "", role: "", skills: "", department_id: "" })
     setShowMemberModal(false)
+    loadData()
+  }
+
+  async function toggleDeptAdmin(member) {
+    const isCurrentlyAdmin = member._isDeptAdmin
+    if (isCurrentlyAdmin) {
+      // Remove dept_admin role
+      await supabase.from('user_roles').update({ role: 'member', department_id: null }).eq('user_id', member.user_id)
+    } else {
+      // Set as dept_admin
+      const { data: existing } = await supabase.from('user_roles').select('*').eq('user_id', member.user_id).maybeSingle()
+      if (existing) {
+        await supabase.from('user_roles').update({ role: 'dept_admin', department_id: member.department_id }).eq('user_id', member.user_id)
+      } else {
+        await supabase.from('user_roles').insert({ user_id: member.user_id, role: 'dept_admin', department_id: member.department_id })
+      }
+    }
     loadData()
   }
 
@@ -271,6 +291,14 @@ export default function Departments() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <span className="text-xs text-gray-400 whitespace-nowrap">{taskCount} 个任务</span>
+                          {canEdit && member.user_id && (
+                            <button onClick={() => toggleDeptAdmin(member)}
+                              className={member._isDeptAdmin ? "text-yellow-500 hover:text-yellow-700" : "text-gray-400 hover:text-yellow-500"}
+                              title={member._isDeptAdmin ? "取消部门管理员" : "设为部门管理员"}
+                            >
+                              {member._isDeptAdmin ? <Shield size={14} /> : <ShieldOff size={14} />}
+                            </button>
+                          )}
                           {canEdit && <button onClick={() => openEditMember(member)} className="text-gray-400 hover:text-blue-500 transition-colors" title="编辑职责">
                             <Edit3 size={13} />
                           </button>}
