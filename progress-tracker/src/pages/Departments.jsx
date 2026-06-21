@@ -316,7 +316,7 @@ export default function Departments() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
-                          <span className="text-xs text-gray-400 whitespace-nowrap">{taskCount} 个任务</span>
+                          {isAdmin && <span className="text-xs text-gray-400 whitespace-nowrap">{taskCount} 个任务</span>}
                           {isAdmin && member.user_id && (
                             <button onClick={() => toggleDeptAdmin(member)}
                               className={member._isDeptAdmin ? "text-yellow-500 hover:text-yellow-700" : "text-gray-400 hover:text-yellow-500"}
