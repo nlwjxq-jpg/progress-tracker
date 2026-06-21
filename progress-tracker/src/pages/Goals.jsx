@@ -80,7 +80,7 @@ export default function Goals() {
       for (const m of matches) {
         const task = tasks[m.taskIndex]
         if (!task || !m.goalId) continue
-        const { error } = await supabase.from(TABLES.TASKS).update({ goal_id: m.goalId }).eq("id", task.id)
+        const { error } = await supabase.from(TABLES.TASKS).update({ goal_id: m.goalId, is_key: true }).eq("id", task.id)
         if (!error) updated++
       }
       setAiMsg(`完成：已关联 ${updated} 项任务`)
