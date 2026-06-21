@@ -2,7 +2,7 @@
 import { supabase, TABLES } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import { getAiApiUrl } from "../lib/deepseek"
-import { Plus, X, Users, Building2, Sparkles, Edit3 } from "lucide-react"
+import { Plus, X, Users, Building2, Sparkles, Edit3, Shield, ShieldOff } from "lucide-react"
 
 function getBatchAssignUrl() {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL
