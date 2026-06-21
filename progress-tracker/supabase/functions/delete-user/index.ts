@@ -20,17 +20,25 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // 1. Find and delete auth user by email
+    // 1. Find the user by email
     const { data: users } = await adminClient.auth.admin.listUsers();
     const user = users?.users?.find(u => u.email === email);
+    
     if (user) {
+      // 2. Unlink department_members (clear user_id, keep the record)
+      await adminClient.from("department_members").update({ user_id: null }).eq("user_id", user.id);
+      
+      // 3. Remove user_roles record
+      await adminClient.from("user_roles").delete().eq("user_id", user.id);
+      
+      // 4. Delete auth user
       await adminClient.auth.admin.deleteUser(user.id);
+    } else {
+      // User doesn't exist in auth, just unlink by name
+      await adminClient.from("department_members").update({ user_id: null }).eq("name", name);
     }
 
-    // 2. Delete department_members record
-    await adminClient.from("department_members").delete().eq("name", name);
-
-    // 3. Delete registration request
+    // 5. Delete registration request
     await adminClient.from("registration_requests").delete().eq("id", request_id);
 
     return new Response(JSON.stringify({ success: true }), {
