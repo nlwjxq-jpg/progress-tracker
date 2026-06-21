@@ -23,7 +23,8 @@ export default function Departments() {
   const [aiMatching, setAiMatching] = useState(false)
   const [aiMsg, setAiMsg] = useState("")
 
-  const { isAdmin } = useAuth()
+  const { isAdmin, isDeptAdmin, adminDeptId } = useAuth()
+  const canEdit = isAdmin || isDeptAdmin
 
   useEffect(() => { loadData() }, [])
 
@@ -205,10 +206,10 @@ export default function Departments() {
           </button>
         </div>
         <div className="flex gap-2">
-          {isAdmin && <button onClick={() => setShowDeptModal(true)} className="btn-secondary flex items-center gap-2">
+          {canEdit && <button onClick={() => setShowDeptModal(true)} className="btn-secondary flex items-center gap-2">
             <Plus size={16} /> 新建部门
           </button>}
-          {isAdmin && <button onClick={() => setShowMemberModal(true)} className="btn-primary flex items-center gap-2" disabled={departments.length === 0}>
+          {canEdit && <button onClick={() => setShowMemberModal(true)} className="btn-primary flex items-center gap-2" disabled={departments.length === 0}>
             <Plus size={16} /> 添加人员
           </button>}
         </div>
@@ -270,10 +271,10 @@ export default function Departments() {
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
                           <span className="text-xs text-gray-400 whitespace-nowrap">{taskCount} 个任务</span>
-                          {isAdmin && <button onClick={() => openEditMember(member)} className="text-gray-400 hover:text-blue-500 transition-colors" title="编辑职责">
+                          {canEdit && <button onClick={() => openEditMember(member)} className="text-gray-400 hover:text-blue-500 transition-colors" title="编辑职责">
                             <Edit3 size={13} />
                           </button>}
-                          {isAdmin && <button onClick={() => deleteMember(member.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                          {canEdit && <button onClick={() => deleteMember(member.id)} className="text-gray-400 hover:text-red-500 transition-colors">
                             <X size={14} />
                           </button>}
                         </div>

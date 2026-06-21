@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { Check, X, UserCheck, Clock, Trash2 } from 'lucide-react'
 
 export default function Registrations() {
-  const { isAdmin, user } = useAuth()
+  const { isAdmin, isDeptAdmin, user } = useAuth()
+  const canAccess = isAdmin || isDeptAdmin
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionMsg, setActionMsg] = useState('')
@@ -96,7 +97,7 @@ export default function Registrations() {
 
   const pendingCount = requests.filter(r => r.status === 'pending').length
 
-  if (!isAdmin) {
+  if (!canAccess) {
     return <div className="card text-center text-gray-400 py-12">仅管理员可访问此页面</div>
   }
 

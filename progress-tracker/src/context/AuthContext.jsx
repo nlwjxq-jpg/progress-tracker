@@ -6,7 +6,9 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isDeptAdmin, setIsDeptAdmin] = useState(false)
   const [userDeptId, setUserDeptId] = useState(null)
+  const [adminDeptId, setAdminDeptId] = useState(null)
   const [userMemberId, setUserMemberId] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -26,7 +28,9 @@ export function AuthProvider({ children }) {
         loadUserInfo(session.user.id)
       } else {
         setIsAdmin(false)
+        setIsDeptAdmin(false)
         setUserDeptId(null)
+        setAdminDeptId(null)
         setUserMemberId(null)
         setLoading(false)
       }
@@ -38,15 +42,19 @@ export function AuthProvider({ children }) {
   async function loadUserInfo(userId) {
     try {
       const [{ data: roleData }, { data: memberData }] = await Promise.all([
-        supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+        supabase.from('user_roles').select('role, department_id').eq('user_id', userId).maybeSingle(),
         supabase.from('department_members').select('id, department_id').eq('user_id', userId).maybeSingle()
       ])
       setIsAdmin(roleData?.role === 'admin')
+      setIsDeptAdmin(roleData?.role === 'dept_admin')
+      setAdminDeptId(roleData?.role === 'dept_admin' ? roleData?.department_id : null)
       setUserDeptId(memberData?.department_id || null)
       setUserMemberId(memberData?.id || null)
     } catch {
       setIsAdmin(false)
+      setIsDeptAdmin(false)
       setUserDeptId(null)
+      setAdminDeptId(null)
       setUserMemberId(null)
     } finally {
       setLoading(false)
@@ -66,7 +74,7 @@ export function AuthProvider({ children }) {
   const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, userDeptId, userMemberId, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, isAdmin, isDeptAdmin, userDeptId, adminDeptId, userMemberId, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   )

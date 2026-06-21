@@ -25,14 +25,14 @@ export default function Tasks() {
   const [selected, setSelected] = useState(new Set())
   const [deleting, setDeleting] = useState(false)
 
-  const { user, isAdmin, userDeptId } = useAuth()
+  const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     try {
       let taskQuery = supabase.from(TABLES.TASKS).select("*").order("created_at", { ascending: false })
-      if (!isAdmin && userDeptId) {
+      if (!isAdmin && !isDeptAdmin && userDeptId) {
         taskQuery = taskQuery.eq("department_id", userDeptId)
       }
       const [{ data: taskData }, { data: memberData }] = await Promise.all([

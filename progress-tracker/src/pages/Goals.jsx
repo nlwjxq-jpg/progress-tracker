@@ -19,7 +19,7 @@ export default function Goals() {
   const [linkSearch, setLinkSearch] = useState("")
   const [linking, setLinking] = useState(false)
 
-  const { isAdmin, userDeptId } = useAuth()
+  const { isAdmin, isDeptAdmin, userDeptId } = useAuth()
 
   useEffect(() => { loadData() }, [])
 
@@ -27,7 +27,7 @@ export default function Goals() {
     try {
       let goalQuery = supabase.from("goals").select("*").order("created_at", { ascending: false })
       let taskQuery = supabase.from(TABLES.TASKS).select("*").order("created_at", { ascending: false })
-      if (!isAdmin && userDeptId) {
+      if (!isAdmin && !isDeptAdmin && userDeptId) {
         goalQuery = goalQuery.eq("department_id", userDeptId)
         taskQuery = taskQuery.eq("department_id", userDeptId)
       }
