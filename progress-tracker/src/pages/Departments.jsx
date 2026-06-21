@@ -2,7 +2,7 @@
 import { supabase, TABLES } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import { getAiApiUrl } from "../lib/deepseek"
-import { Plus, X, Users, Building2, Sparkles, Edit3, Shield, ShieldOff } from "lucide-react"
+import { Plus, X, Users, Building2, Sparkles, Edit3, Shield, ShieldOff, Trash2 } from "lucide-react"
 
 function getBatchAssignUrl() {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -125,6 +125,19 @@ export default function Departments() {
 
   async function deleteMember(id) {
     await supabase.from(TABLES.MEMBERS).delete().eq("id", id)
+    loadData()
+  }
+
+  async function deleteDepartment(deptId, deptName) {
+    const memberCount = (membersByDept[deptId] || []).length
+    const msg = memberCount > 0
+      ? `确定删除部门「${deptName}」及其 ${memberCount} 名人员？此操作不可撤销。`
+      : `确定删除部门「${deptName}」？此操作不可撤销。`
+    if (!confirm(msg)) return
+    // Delete all members in this department first
+    await supabase.from(TABLES.MEMBERS).delete().eq("department_id", deptId)
+    // Then delete the department
+    await supabase.from(TABLES.DEPARTMENTS).delete().eq("id", deptId)
     loadData()
   }
 
@@ -265,6 +278,14 @@ export default function Departments() {
                 <Building2 size={18} className="text-blue-600" />
                 <h3 className="text-lg font-semibold">{dept.name}</h3>
                 <span className="text-xs text-gray-400 ml-auto">{membersByDept[dept.id]?.length || 0} 人</span>
+                {isAdmin && (
+                  <button onClick={() => deleteDepartment(dept.id, dept.name)}
+                    className="text-gray-400 hover:text-red-500 transition-colors ml-2"
+                    title="删除部门及所有人员"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
 
               {membersByDept[dept.id]?.length === 0 ? (
