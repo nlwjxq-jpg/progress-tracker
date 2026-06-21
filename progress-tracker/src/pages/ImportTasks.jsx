@@ -20,7 +20,13 @@ export default function ImportTasks() {
   const [importResult, setImportResult] = useState({ added: 0, skipped: 0 })
   const [deptId, setDeptId] = useState('')
   const [departments, setDepartments] = useState([])
-  const { isAdmin, userDeptId } = useAuth()
+  const { isAdmin, isDeptAdmin, userDeptId } = useAuth()
+
+  useEffect(() => {
+    supabase.from('departments').select('*').then(({ data }) => setDepartments(data || []))
+  }, [])
+
+  const effectiveDeptId = (isAdmin || isDeptAdmin) ? (deptId || '') : (userDeptId || '')
 
   const handleFileChange = async (e) => {
     const f = e.target.files?.[0]
@@ -150,7 +156,7 @@ export default function ImportTasks() {
         <div className="card space-y-4">
           <p className="text-sm text-gray-500">上传 Excel / CSV / Word / TXT 格式的年度工作任务表，AI 将自动识别并提取任务。</p>
 
-          {isAdmin && departments.length > 0 && (
+          {(isAdmin || isDeptAdmin) && departments.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">导入到部门</label>
               <select className="input-field max-w-xs" value={deptId} onChange={e => setDeptId(e.target.value)}>
