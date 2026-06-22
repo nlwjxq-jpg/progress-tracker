@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { supabase, TABLES } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
@@ -28,6 +28,8 @@ export default function Tasks() {
   const [selfOnly, setSelfOnly] = useState(false)
   const [reportGenerating, setReportGenerating] = useState(false)
   const [reportMsg, setReportMsg] = useState("")
+  const [sortField, setSortField] = useState("")
+  const [sortDir, setSortDir] = useState("asc")
 
   const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
 
@@ -127,11 +129,51 @@ export default function Tasks() {
     } finally { setReportGenerating(false) }
   }
 
-  const sortedTasks = [...tasks].sort((a, b) => {
-    if (a.is_key && !b.is_key) return -1
-    if (!a.is_key && b.is_key) return 1
-    return 0
-  })
+  function sortTasks(taskList) {
+    const list = [...taskList]
+    if (!sortField) {
+      list.sort((a, b) => {
+        if (a.is_key && !b.is_key) return -1
+        if (!a.is_key && b.is_key) return 1
+        return 0
+      })
+      return list
+    }
+    list.sort((a, b) => {
+      let va, vb
+      switch (sortField) {
+        case "type": va = a.is_key ? 1 : 2; vb = b.is_key ? 1 : 2; break
+        case "title": va = a.title || ""; vb = b.title || ""; break
+        case "last_month_target": va = a.last_month_target || ""; vb = b.last_month_target || ""; break
+        case "work_assignee": va = a.work_assignee || a.assignee || ""; vb = b.work_assignee || b.assignee || ""; break
+        case "dept_leader": va = a.dept_leader || ""; vb = b.dept_leader || ""; break
+        case "due_date": va = a.due_date || ""; vb = b.due_date || ""; break
+        case "status": va = a.status || ""; vb = b.status || ""; break
+        case "progress": va = a.progress || 0; vb = b.progress || 0; break
+        default: return 0
+      }
+      if (va < vb) return sortDir === "asc" ? -1 : 1
+      if (va > vb) return sortDir === "asc" ? 1 : -1
+      return 0
+    })
+    return list
+  }
+
+  function toggleSort(field) {
+    if (sortField === field) {
+      setSortDir(d => d === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDir("asc")
+    }
+  }
+
+  function SortArrow({ field }) {
+    if (sortField !== field) return <span className="text-gray-300 ml-1">↕</span>
+    return <span className="text-blue-600 ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>
+  }
+
+  const sortedTasks = sortTasks(tasks)
 
   async function handleAiBatchMatch() {
     setAiMatching(true); setAiMsg("正在调用 AI 分析...")
@@ -343,14 +385,14 @@ export default function Tasks() {
                 <th className="pb-2 font-medium w-8">
                   <input type="checkbox" className="accent-blue-600" checked={filteredTasks.length > 0 && filteredTasks.every(t => selected.has(t.id))} onChange={toggleSelectAll} />
                 </th>
-                <th className="pb-2 font-medium">任务类型</th>
-                <th className="pb-2 font-medium">任务名称</th>
-                <th className="pb-2 font-medium whitespace-nowrap">上月工作目标</th>
-                <th className="pb-2 font-medium whitespace-nowrap">工作负责人</th>
-                <th className="pb-2 font-medium whitespace-nowrap">部门负责人</th>
-                <th className="pb-2 font-medium">截止日期</th>
-                <th className="pb-2 font-medium">状态</th>
-                <th className="pb-2 font-medium">进度</th>
+                <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("type")}>任务类型<SortArrow field="type" /></th>
+                <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("title")}>任务名称<SortArrow field="title" /></th>
+                <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("last_month_target")}>上月工作目标<SortArrow field="last_month_target" /></th>
+                <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("work_assignee")}>工作负责人<SortArrow field="work_assignee" /></th>
+                <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("dept_leader")}>部门负责人<SortArrow field="dept_leader" /></th>
+                <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("due_date")}>截止日期<SortArrow field="due_date" /></th>
+                <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("status")}>状态<SortArrow field="status" /></th>
+                <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("progress")}>进度<SortArrow field="progress" /></th>
               </tr>
             </thead>
             <tbody>
