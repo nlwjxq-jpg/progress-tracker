@@ -76,7 +76,7 @@ export default function Goals() {
       const result = await resp.json()
       if (!resp.ok) throw new Error(result.warning || result.error || "关联失败")
       const matches = result.matches || []
-      if (matches.length === 0) { setAiMsg("未获得 AI 关联结果"); return }
+      if (matches.length === 0) { setAiMsg("未获得 AI 关联结果" + (result.warning ? "：" + result.warning : "") + (result.raw ? "\n原始返回：" + result.raw.slice(0,200) : "")); return }
       setAiMsg(`AI 返回 ${matches.length} 条关联，正在更新...`)
       let updated = 0
       for (const m of matches) {
