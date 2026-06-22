@@ -80,15 +80,24 @@ Deno.serve(async (req) => {
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content?.trim() || "";
 
+    let parsed = null;
     const jsonMatch = content.match(/\{[^}]+\}/);
     if (jsonMatch) {
-      try {
-        const result = JSON.parse(jsonMatch[0]);
-        return new Response(
-          JSON.stringify(result),
-          { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
-        );
-      } catch (_) {}
+      try { parsed = JSON.parse(jsonMatch[0]); } catch (_) {
+        try {
+          const cleaned = jsonMatch[0]
+            .replace(/'/g, '"')
+            .replace(/,\s*}/g, '}');
+          parsed = JSON.parse(cleaned);
+        } catch (__) {}
+      }
+    }
+
+    if (parsed) {
+      return new Response(
+        JSON.stringify(parsed),
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+      );
     }
 
     return new Response(

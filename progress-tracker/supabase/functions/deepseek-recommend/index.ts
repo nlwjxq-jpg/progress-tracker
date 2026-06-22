@@ -82,11 +82,22 @@ Deno.serve(async (req) => {
 
     console.log(`DeepSeek recommend response: ${content}`);
 
+    let parsed = null;
     const jsonMatch = content.match(/\{[^}]+\}/);
-
     if (jsonMatch) {
+      try { parsed = JSON.parse(jsonMatch[0]); } catch (_) {
+        try {
+          const cleaned = jsonMatch[0]
+            .replace(/'/g, '"')
+            .replace(/,\s*}/g, '}');
+          parsed = JSON.parse(cleaned);
+        } catch (__) {}
+      }
+    }
+
+    if (parsed) {
       return new Response(
-        JSON.stringify(JSON.parse(jsonMatch[0])),
+        JSON.stringify(parsed),
         { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
       );
     }

@@ -99,7 +99,26 @@ Deno.serve(async (req) => {
     let matches = null;
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
-      try { matches = JSON.parse(jsonMatch[0]); } catch (_) {}
+      try { matches = JSON.parse(jsonMatch[0]); } catch (_) {
+        // Try cleaning up: replace single quotes, fix trailing commas, etc.
+        try {
+          const cleaned = jsonMatch[0]
+            .replace(/'/g, '"')
+            .replace(/,\s*]/g, ']')
+            .replace(/,\s*}/g, '}');
+          matches = JSON.parse(cleaned);
+        } catch (__) {}
+      }
+    }
+
+    // Fallback: extract individual objects
+    if (!matches) {
+      const objMatches = content.match(/\{[^}]+\}/g);
+      if (objMatches) {
+        matches = objMatches.map(s => {
+          try { return JSON.parse(s); } catch (_) { return null; }
+        }).filter(Boolean);
+      }
     }
 
     if (matches && matches.length > 0) {

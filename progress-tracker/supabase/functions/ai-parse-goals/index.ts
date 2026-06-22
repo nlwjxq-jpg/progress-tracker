@@ -100,11 +100,19 @@ Deno.serve(async (req) => {
 
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
-      try { goals = JSON.parse(jsonMatch[0]); } catch (_) {}
+      try { goals = JSON.parse(jsonMatch[0]); } catch (_) {
+        try {
+          const cleaned = jsonMatch[0]
+            .replace(/'/g, '"')
+            .replace(/,\s*]/g, ']')
+            .replace(/,\s*}/g, '}');
+          goals = JSON.parse(cleaned);
+        } catch (__) {}
+      }
     }
 
     if (!goals) {
-      const objMatches = content.match(/\{[^}]+\}/g);
+      const objMatches = content.match(/\{[\s\S]+?\}/g);
       if (objMatches) {
         goals = objMatches.map(s => { try { return JSON.parse(s); } catch (_) { return null; } }).filter(Boolean);
       }

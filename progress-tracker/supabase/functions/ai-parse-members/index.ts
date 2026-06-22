@@ -96,25 +96,38 @@ Deno.serve(async (req) => {
 
     console.log(`DeepSeek response: ${content.slice(0, 300)}`);
 
+    let departments = null;
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
-      try {
-        const departments = JSON.parse(jsonMatch[0]);
-        return new Response(
-          JSON.stringify({ departments }),
-          { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
-        );
-      } catch (parseErr) {
-        console.error(`JSON parse error: ${parseErr.message}`);
-        return new Response(
-          JSON.stringify({ departments: [], warning: "AI 返回格式异常，请重试", raw: content.slice(0, 200) }),
-          { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
-        );
+      try { parsed = JSON.parse(jsonMatch[0]); } catch (_) {
+        try {
+          const cleaned = jsonMatch[0]
+            .replace(/'/g, '"')
+            .replace(/,\s*]/g, ']')
+            .replace(/,\s*}/g, '}');
+          parsed = JSON.parse(cleaned);
+        } catch (__) {}
+      }
+    }
+    // Fallback: extract individual objects
+    if (!parsed) {
+      const objMatches = content.match(/\{[\s\S]+?\}/g);
+      if (objMatches) {
+        parsed = objMatches.map(s => {
+          try { return JSON.parse(s); } catch (_) { return null; }
+        }).filter(Boolean);
       }
     }
 
+    if (departments && departments.length > 0) {
+      return new Response(
+        JSON.stringify({ departments }),
+        { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ departments: [], warning: "AI 返回格式异常，请重试", raw: content.slice(0, 200) }),
+      JSON.stringify({ departments: [], warning: "AI 返回格式异常，请重试", raw: content.slice(0, 500) }),
       { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
     );
   } catch (err) {
