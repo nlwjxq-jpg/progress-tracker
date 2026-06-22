@@ -97,15 +97,16 @@ Deno.serve(async (req) => {
     console.log(`DeepSeek response: ${content.slice(0, 300)}`);
 
     let departments = null;
+    let parsed = null;
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
-      try { parsed = JSON.parse(jsonMatch[0]); } catch (_) {
+      try { departments = JSON.parse(jsonMatch[0]); } catch (_) {
         try {
           const cleaned = jsonMatch[0]
             .replace(/'/g, '"')
             .replace(/,\s*]/g, ']')
             .replace(/,\s*}/g, '}');
-          parsed = JSON.parse(cleaned);
+          departments = JSON.parse(cleaned);
         } catch (__) {}
       }
     }
@@ -113,7 +114,7 @@ Deno.serve(async (req) => {
     if (!parsed) {
       const objMatches = content.match(/\{[\s\S]+?\}/g);
       if (objMatches) {
-        parsed = objMatches.map(s => {
+        departments = objMatches.map(s => {
           try { return JSON.parse(s); } catch (_) { return null; }
         }).filter(Boolean);
       }
