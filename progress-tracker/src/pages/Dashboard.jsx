@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { getDueStatus, STATUS_LABELS } from '../lib/dueStatus'
 import { format } from 'date-fns'
 import { Plus, AlertTriangle, CheckCircle, Clock, Users } from 'lucide-react'
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 export default function Dashboard() {
   const { isAdmin, isDeptAdmin, userDeptId } = useAuth()
@@ -69,6 +70,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <ConfidentialNotice />
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">仪表盘</h2>
         <Link to="/tasks/new" className="btn-primary flex items-center gap-2">

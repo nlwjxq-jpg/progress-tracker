@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase, TABLES } from '../lib/supabase'
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -62,6 +63,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <ConfidentialNotice />
       <div className="card w-full max-w-md">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-blue-700">协同目标进度管理</h1>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase, TABLES } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { Check, X, UserCheck, Clock, Trash2 } from 'lucide-react'
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 export default function Registrations() {
   const { isAdmin, isDeptAdmin, user } = useAuth()
@@ -105,6 +106,7 @@ export default function Registrations() {
 
   return (
     <div className="space-y-6">
+      <ConfidentialNotice />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold text-gray-800">注册审批</h2>

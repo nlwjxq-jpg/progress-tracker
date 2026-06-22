@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Wrench, Save, RotateCcw, CheckCircle } from 'lucide-react'
 import { getAiApiUrl, setAiApiUrl } from '../lib/deepseek'
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 const PLACEHOLDER_URL = 'https://api.deepseek.com/v1/chat/completions'
 
@@ -34,6 +35,7 @@ export default function AISettings() {
 
   return (
     <div className="space-y-6 max-w-2xl">
+      <ConfidentialNotice />
       <div className="flex items-center gap-3">
         <Wrench size={24} className="text-blue-600" />
         <h2 className="text-2xl font-bold text-gray-800">AI 设置</h2>

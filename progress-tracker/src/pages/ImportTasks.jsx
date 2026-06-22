@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { parseFileContent } from '../lib/fileParser'
 import { parseTasksFromText } from '../lib/aiParse'
 import { Upload, Sparkles, Plus, CheckCircle, X, FileSpreadsheet, AlertTriangle } from 'lucide-react'
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 export default function ImportTasks() {
   const navigate = useNavigate()
@@ -148,6 +149,7 @@ export default function ImportTasks() {
 
   return (
     <div className="space-y-6 max-w-3xl">
+      <ConfidentialNotice />
       <div className="flex items-center gap-3">
         <FileSpreadsheet size={24} className="text-blue-600" />
         <h2 className="text-2xl font-bold text-gray-800">导入年度任务表</h2>

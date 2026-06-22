@@ -4,6 +4,7 @@ import { supabase, TABLES } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import { recommendAssignee } from "../lib/deepseek"
 import { ArrowLeft, Sparkles, Save } from "lucide-react"
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 export default function TaskForm() {
   const navigate = useNavigate()
@@ -96,6 +97,7 @@ export default function TaskForm() {
 
   return (
     <div className="space-y-6 max-w-2xl">
+      <ConfidentialNotice />
       <div className="flex items-center gap-4">
         <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors"><ArrowLeft size={20} /></button>
         <h2 className="text-2xl font-bold text-gray-800">{isEdit ? "编辑任务" : "新建任务"}</h2>

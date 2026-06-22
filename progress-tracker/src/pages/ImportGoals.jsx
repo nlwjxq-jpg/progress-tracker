@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext"
 import { parseFileContent } from "../lib/fileParser"
 import { getAiApiUrl } from "../lib/deepseek"
 import { Upload, Sparkles, CheckCircle, Target, AlertTriangle } from "lucide-react"
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 function getFunctionUrl() {
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-parse-goals`
@@ -111,6 +112,7 @@ export default function ImportGoals() {
 
   return (
     <div className="space-y-6 max-w-3xl">
+      <ConfidentialNotice />
       <div className="flex items-center gap-3">
         <Target size={24} className="text-blue-600" />
         <h2 className="text-2xl font-bold text-gray-800">导入目标表</h2>

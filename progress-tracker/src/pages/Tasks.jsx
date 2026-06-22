@@ -6,6 +6,7 @@ import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
 import { getAiApiUrl } from "../lib/deepseek"
 import { format } from "date-fns"
 import { Plus, Search, Edit, FileText, Sparkles, Wand2, Trash2, Download } from "lucide-react"
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 function getFunctionUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-assign` }
 function getAnalyzeUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-progress` }
@@ -287,6 +288,7 @@ export default function Tasks() {
 
   return (
     <div className="space-y-6">
+      <ConfidentialNotice />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold text-gray-800">任务列表</h2>

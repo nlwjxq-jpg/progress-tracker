@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext"
 import { getAiApiUrl } from "../lib/deepseek"
 import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
 import { Plus, Target, AlertTriangle, CheckCircle, Sparkles, Link2, X, Search, Download } from "lucide-react"
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 function getLinkUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/link-tasks-goals` }
 
@@ -159,6 +160,7 @@ export default function Goals() {
 
   return (
     <div className="space-y-6">
+      <ConfidentialNotice />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold text-gray-800">目标管理</h2>

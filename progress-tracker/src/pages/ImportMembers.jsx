@@ -5,6 +5,7 @@ import { parseFileContent } from '../lib/fileParser'
 import { parseMembersFromText } from '../lib/aiParse'
 import { recommendAssignee } from '../lib/deepseek'
 import { Upload, Sparkles, CheckCircle, Users, Building2, AlertTriangle } from 'lucide-react'
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 export default function ImportMembers() {
   const navigate = useNavigate()
@@ -156,6 +157,7 @@ export default function ImportMembers() {
 
   return (
     <div className="space-y-6 max-w-3xl">
+      <ConfidentialNotice />
       <div className="flex items-center gap-3">
         <Users size={24} className="text-blue-600" />
         <h2 className="text-2xl font-bold text-gray-800">导入部门人员分工表</h2>

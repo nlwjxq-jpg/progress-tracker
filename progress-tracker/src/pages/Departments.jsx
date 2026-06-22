@@ -3,6 +3,7 @@ import { supabase, TABLES } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import { getAiApiUrl } from "../lib/deepseek"
 import { Plus, X, Users, Building2, Sparkles, Edit3, Shield, ShieldOff, Trash2 } from "lucide-react"
+import ConfidentialNotice from "../components/ConfidentialNotice";
 
 function getBatchAssignUrl() {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -230,6 +231,7 @@ export default function Departments() {
 
   return (
     <div className="space-y-6">
+      <ConfidentialNotice />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold text-gray-800">部门与人员管理</h2>
