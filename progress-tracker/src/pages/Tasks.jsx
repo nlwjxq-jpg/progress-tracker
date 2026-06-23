@@ -4,7 +4,6 @@ import { supabase, TABLES } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import { getDueStatus, STATUS_LABELS } from "../lib/dueStatus"
 import { getAiApiUrl } from "../lib/deepseek"
-import { format } from "date-fns"
 import { Plus, Search, Edit, FileText, Sparkles, Wand2, Trash2, Download } from "lucide-react"
 
 function getFunctionUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-assign` }
@@ -13,6 +12,7 @@ function getAnalyzeUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/function
 export default function Tasks() {
   const [tasks, setTasks] = useState([])
   const [members, setMembers] = useState([])
+  const [goals, setGoals] = useState([])
   const [filter, setFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
@@ -27,7 +27,6 @@ export default function Tasks() {
   const [selfOnly, setSelfOnly] = useState(false)
   const [reportGenerating, setReportGenerating] = useState(false)
   const [reportMsg, setReportMsg] = useState("")
-  const [goals, setGoals] = useState([])
   const [quarterModal, setQuarterModal] = useState(null)
 
   const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
@@ -40,9 +39,10 @@ export default function Tasks() {
       if (!isAdmin && !isDeptAdmin && userDeptId) {
         taskQuery = taskQuery.eq("department_id", userDeptId)
       }
-      const [{ data: taskData }, { data: memberData }] = await Promise.all([
+      const [{ data: taskData }, { data: memberData }, { data: goalData }] = await Promise.all([
         taskQuery,
-        supabase.from(TABLES.MEMBERS).select("*")
+        supabase.from(TABLES.MEMBERS).select("*"),
+        supabase.from("goals").select("*")
       ])
       setTasks(taskData || [])
       setMembers(memberData || [])
@@ -63,21 +63,24 @@ export default function Tasks() {
     const sourceTasks = selected.size > 0 ? sortedTasks.filter(t => selected.has(t.id)) : sortedTasks
     if (sourceTasks.length === 0) return
     const BOM = "\uFEFF"
-    const headers = ["序号", "任务标题", "任务类型", "工作负责人", "部门负责人", "优先级", "状态", "进度%", "上月工作目标", "上月工作进展", "本月工作目标", "截止日期", "任务描述"]
+    const headers = ["序号", "任务类别", "考核目标", "具体任务", "截止日期", "状态", "工作责任人", "部门负责人", "一季度", "二季度", "三季度", "四季度", "上月工作目标", "上月工作进展", "本月工作目标", "进度%"]
     const rows = sourceTasks.map((t, i) => [
       i + 1,
+      t.category || "",
+      t.assessment_target || "",
       t.title,
-      t.is_key ? "重点任务" : "日常任务",
+      t.due_date || "",
+      STATUS_LABELS[t.status] || t.status || "",
       t.work_assignee || t.assignee || "",
       t.dept_leader || "",
-      t.priority || "",
-      STATUS_LABELS[t.status] || t.status || "",
-      (t.progress || 0) + "%",
+      t.q1_target || "",
+      t.q2_target || "",
+      t.q3_target || "",
+      t.q4_target || "",
       t.last_month_target || "",
       t.last_month_progress || "",
       t.this_month_target || "",
-      t.due_date || "",
-      (t.description || "").slice(0, 200)
+      (t.progress || 0) + "%"
     ])
     const csv = BOM + headers.join(",") + "\n" + rows.map(r => r.map(c => "\"" + String(c).replace(/"/g, "\"\"") + "\"").join(",")).join("\n")
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
@@ -113,7 +116,6 @@ export default function Tasks() {
       })
       const result = await resp.json()
       if (!resp.ok) throw new Error(result.error || "生成失败")
-      // Download the Word doc
       const docContent = result.report || result.content || ""
       const blob = new Blob(["\uFEFF" + docContent], { type: "application/msword;charset=utf-8" })
       const url = URL.createObjectURL(blob)
@@ -202,7 +204,10 @@ export default function Tasks() {
     if (filter === "near-due" && t.status !== "completed" && getDueStatus(t.due_date) !== "near-due") return false
     if (filter === "completed" && t.status !== "completed") return false
     if (filter === "active" && t.status === "completed") return false
-    if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
+    if (search) {
+      const s = search.toLowerCase()
+      if (!(t.title || "").toLowerCase().includes(s) && !(t.description || "").toLowerCase().includes(s)) return false
+    }
     if (selfOnly) {
       const memberName = members.find(m => m.user_id === user?.id)?.name
       if (!memberName) return false
@@ -218,8 +223,23 @@ export default function Tasks() {
     { key: "overdue", label: "已逾期" }, { key: "near-due", label: "临近截止" }, { key: "completed", label: "已完成" },
   ]
 
-  function openQuarterModal(task) { setQuarterModal({ id: task.id, title: task.title, q1: task.q1_target||"", q2: task.q2_target||"", q3: task.q3_target||"", q4: task.q4_target||"" }) }
-  async function saveQuarterModal() { if (!quarterModal) return; try { await supabase.from(TABLES.TASKS).update({ q1_target: quarterModal.q1||null, q2_target: quarterModal.q2||null, q3_target: quarterModal.q3||null, q4_target: quarterModal.q4||null }).eq("id", quarterModal.id); setQuarterModal(null); loadData() } catch (e) { alert("保存失败: "+e.message) } }
+  function openQuarterModal(task) {
+    setQuarterModal({ id: task.id, title: task.title, q1: task.q1_target||"", q2: task.q2_target||"", q3: task.q3_target||"", q4: task.q4_target||"" })
+  }
+
+  async function saveQuarterModal() {
+    if (!quarterModal) return
+    try {
+      await supabase.from(TABLES.TASKS).update({
+        q1_target: quarterModal.q1 || null,
+        q2_target: quarterModal.q2 || null,
+        q3_target: quarterModal.q3 || null,
+        q4_target: quarterModal.q4 || null
+      }).eq("id", quarterModal.id)
+      setQuarterModal(null)
+      loadData()
+    } catch (e) { alert("保存失败: " + e.message) }
+  }
 
   function openProgressModal(task) {
     setProgressModal(task)
@@ -304,7 +324,7 @@ export default function Tasks() {
       </div>
 
       {reportMsg && (
-        <div className={`text-sm p-3 rounded-lg ${reportMsg.includes("失败") ? "bg-red-50 text-red-600" : reportMsg.includes("生成中") ? "bg-blue-50 text-blue-700" : "bg-green-50 text-green-700"}`}>{reportMsg}</div>
+        <div className={`text-sm p-3 rounded-lg ${reportMsg.includes("失败") ? "bg-red-50 text-red-600" : reportMsg.includes("中") ? "bg-blue-50 text-blue-700" : "bg-green-50 text-green-700"}`}>{reportMsg}</div>
       )}
       {aiMsg && (
         <div className={`text-sm p-3 rounded-lg ${aiMsg.includes("失败") ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-700"}`}>
@@ -341,20 +361,26 @@ export default function Tasks() {
         <div className="card text-center text-gray-400 py-12">暂无匹配的任务</div>
       ) : (
         <div className="card overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead>
-              <tr className="border-b text-left text-gray-500">
+              <tr className="border-b text-left text-gray-500 text-xs">
                 <th className="pb-2 font-medium w-8">
                   <input type="checkbox" className="accent-blue-600" checked={filteredTasks.length > 0 && filteredTasks.every(t => selected.has(t.id))} onChange={toggleSelectAll} />
                 </th>
-                <th className="pb-2 font-medium">任务类型</th>
-                <th className="pb-2 font-medium">任务名称</th>
-                <th className="pb-2 font-medium whitespace-nowrap">上月工作目标</th>
-                <th className="pb-2 font-medium whitespace-nowrap">工作负责人</th>
-                <th className="pb-2 font-medium whitespace-nowrap">部门负责人</th>
-                <th className="pb-2 font-medium">截止日期</th>
-                <th className="pb-2 font-medium">状态</th>
-                <th className="pb-2 font-medium">进度</th>
+                <th className="pb-2 font-medium w-20">任务类别</th>
+                <th className="pb-2 font-medium w-32">考核目标</th>
+                <th className="pb-2 font-medium w-40">具体任务</th>
+                <th className="pb-2 font-medium w-20">截止日期</th>
+                <th className="pb-2 font-medium w-16">状态</th>
+                <th className="pb-2 font-medium w-16">工作<br/>责任人</th>
+                <th className="pb-2 font-medium w-16">部门<br/>负责人</th>
+                <th className="pb-2 font-medium w-24">一季度</th>
+                <th className="pb-2 font-medium w-24">二季度</th>
+                <th className="pb-2 font-medium w-24">三季度</th>
+                <th className="pb-2 font-medium w-24">四季度</th>
+                <th className="pb-2 font-medium w-28">上月工作目标</th>
+                <th className="pb-2 font-medium w-16">进度</th>
+                <th className="pb-2 font-medium w-24">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -362,7 +388,6 @@ export default function Tasks() {
                 const status = getDueStatus(task.due_date)
                 const workAssignee = task.work_assignee || task.assignee || ""
                 const deptLeader = task.dept_leader || ""
-                const lastMonthTarget = task.last_month_target || ""
                 const isUnassigned = !workAssignee && !deptLeader
                 const isChecked = selected.has(task.id)
                 return (
@@ -370,38 +395,57 @@ export default function Tasks() {
                     <td className="py-2.5 pl-2">
                       <input type="checkbox" className="accent-blue-600" checked={isChecked} onChange={() => toggleSelect(task.id)} />
                     </td>
-                    <td className="py-2.5">
-                      <span className={`badge text-xs ${task.is_key ? "badge-blue" : "badge-gray"}`}>
-                        {task.is_key ? "重点任务" : "日常任务"}
-                      </span>
+                    <td className="py-2.5 pr-2 whitespace-normal break-words">
+                      {task.is_key ? <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded mr-1">重点</span> : <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded mr-1">日常</span>}
+                      {task.category || ""}
                     </td>
-                    <td className="py-2.5">
+                    <td className="py-2.5 pr-2 whitespace-normal break-words text-xs">{task.assessment_target || ""}</td>
+                    <td className="py-2.5 pr-2 whitespace-normal break-words">
+                      <Link to={`/tasks/${task.id}`} className="text-blue-700 hover:underline font-medium">{task.title}</Link>
+                      {task.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{task.description}</p>}
+                    </td>
+                    <td className="py-2.5 pr-2 whitespace-nowrap text-xs">
+                      {task.due_date ? <span className={`${status === "overdue" ? "text-red-600 font-medium" : status === "near-due" ? "text-orange-600" : "text-gray-600"}`}>{task.due_date}</span> : <span className="text-gray-300">--</span>}
+                    </td>
+                    <td className="py-2.5 pr-2 whitespace-nowrap">
+                      <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${task.status === "completed" ? "bg-green-100 text-green-700" : task.status === "in_progress" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>{STATUS_LABELS[task.status] || task.status || "待开始"}</span>
+                    </td>
+                    <td className="py-2.5 pr-2 whitespace-normal break-words text-xs">{workAssignee || <span className="text-orange-400">未分配</span>}</td>
+                    <td className="py-2.5 pr-2 whitespace-normal break-words text-xs">{deptLeader || <span className="text-gray-300">--</span>}</td>
+                    <td className="py-2.5 pr-2">
+                      <button onClick={() => openQuarterModal(task)} className="text-left text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer whitespace-normal break-words w-full" title="点击编辑Q1目标">
+                        {task.q1_target ? task.q1_target.slice(0, 50) + (task.q1_target.length > 50 ? "..." : "") : <span className="text-gray-300 italic">点击设置</span>}
+                      </button>
+                    </td>
+                    <td className="py-2.5 pr-2">
+                      <button onClick={() => openQuarterModal(task)} className="text-left text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer whitespace-normal break-words w-full" title="点击编辑Q2目标">
+                        {task.q2_target ? task.q2_target.slice(0, 50) + (task.q2_target.length > 50 ? "..." : "") : <span className="text-gray-300 italic">点击设置</span>}
+                      </button>
+                    </td>
+                    <td className="py-2.5 pr-2">
+                      <button onClick={() => openQuarterModal(task)} className="text-left text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer whitespace-normal break-words w-full" title="点击编辑Q3目标">
+                        {task.q3_target ? task.q3_target.slice(0, 50) + (task.q3_target.length > 50 ? "..." : "") : <span className="text-gray-300 italic">点击设置</span>}
+                      </button>
+                    </td>
+                    <td className="py-2.5 pr-2">
+                      <button onClick={() => openQuarterModal(task)} className="text-left text-xs text-blue-600 hover:text-blue-800 hover:underline cursor-pointer whitespace-normal break-words w-full" title="点击编辑Q4目标">
+                        {task.q4_target ? task.q4_target.slice(0, 50) + (task.q4_target.length > 50 ? "..." : "") : <span className="text-gray-300 italic">点击设置</span>}
+                      </button>
+                    </td>
+                    <td className="py-2.5 pr-2 whitespace-normal break-words text-xs">{task.last_month_target || <span className="text-gray-300">--</span>}</td>
+                    <td className="py-2.5 pr-2 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <div>
-                          <div className="font-medium">{task.title}</div>
-                          {task.goal_id && goals.find(g => g.id === task.goal_id)?.title && <div className="text-xs text-blue-600 mt-0.5">🎯 {goals.find(g=>g.id===task.goal_id).title.slice(0,40)}</div>}
-                          {task.description && <div className="text-xs text-gray-400 mt-0.5">{task.description.slice(0, 60)}</div>}
+                        <div className="w-12 bg-gray-200 rounded-full h-2 overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${(task.progress || 0) >= 100 ? "bg-green-500" : (task.progress || 0) >= 50 ? "bg-blue-500" : "bg-yellow-500"}`} style={{ width: `${task.progress || 0}%` }} />
                         </div>
-                        <Link to={`/tasks/${task.id}/edit`} className="text-blue-500 hover:text-blue-700 shrink-0" title="编辑任务"><Edit size={14} /></Link>
+                        <span className="text-xs text-gray-500 w-8">{task.progress || 0}%</span>
                       </div>
                     </td>
-                    <td className="py-2.5"><span className="text-xs text-gray-600 whitespace-pre-wrap max-w-40 block truncate">{lastMonthTarget || "-"}</span></td>
-                    <td className="py-2.5"><span className={`text-sm ${!workAssignee ? "text-orange-500 font-medium" : ""}`}>{workAssignee || "未分配"}</span></td>
-                    <td className="py-2.5"><span className={`text-sm ${!deptLeader ? "text-orange-500 font-medium" : ""}`}>{deptLeader || "未分配"}</span></td>
-                    <td className="py-2.5 whitespace-nowrap">{task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "-"}</td>
-                    <td className="py-2.5">
-                      <span className={`${task.status === "completed" ? "badge-green" : status === "overdue" ? "badge-red" : status === "near-due" ? "badge-yellow" : "badge-green"} inline-block`}>
-                        {task.status === "completed" ? "已完成" : STATUS_LABELS[status]}
-                      </span>
-                    </td>
-                    <td className="py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${task.status === "completed" ? "bg-green-500" : (task.progress || 0) > 70 ? "bg-blue-500" : (task.progress || 0) > 30 ? "bg-yellow-500" : "bg-gray-400"}`} style={{ width: `${task.progress || 0}%` }} />
-                        </div>
-                        <span className="text-xs text-gray-500">{task.progress || 0}%</span>
+                    <td className="py-2.5 whitespace-nowrap">
+                      <div className="flex gap-1">
+                        <Link to={`/tasks/${task.id}`} className="p-1 hover:bg-gray-200 rounded transition-colors" title="编辑任务"><Edit size={14} /></Link>
+                        <button onClick={() => openProgressModal(task)} className="p-1 hover:bg-blue-100 rounded transition-colors text-blue-600" title="填写进展/目标"><FileText size={14} /></button>
                       </div>
-                      <button onClick={() => openProgressModal(task)} className="text-xs text-blue-500 hover:text-blue-700 mt-1 flex items-center gap-1"><FileText size={12} /> 填写进展/目标</button>
                     </td>
                   </tr>
                 )
@@ -411,16 +455,14 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* Progress & Target Modal */}
+      {/* Progress/Status Modal */}
       {progressModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setProgressModal(null)}>
           <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold">填写工作进展与目标</h3>
+            <h3 className="text-lg font-semibold">填写进展 / 目标</h3>
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-sm font-medium text-gray-700">{progressModal.title}</p>
-              {progressModal.description && <p className="text-xs text-gray-400 mt-1">{progressModal.description}</p>}
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">上月工作进展</label>
               <textarea className="input-field" rows={3} placeholder="请填写上月实际完成的工作进展..." value={progressForm.last_progress} onChange={e => setProgressForm(f => ({ ...f, last_progress: e.target.value }))} />
@@ -430,20 +472,17 @@ export default function Tasks() {
               <textarea className="input-field" rows={3} placeholder="请填写本月计划完成的工作目标..." value={progressForm.this_target} onChange={e => setProgressForm(f => ({ ...f, this_target: e.target.value }))} />
             </div>
 
-            {/* AI Analyze Button */}
             <button onClick={handleAiAnalyzeProgress} disabled={aiAnalyzing || (!progressForm.last_progress && !progressForm.this_target)} className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50 w-full justify-center">
               <Wand2 size={16} className={aiAnalyzing ? "animate-pulse text-purple-500" : "text-purple-500"} />
               {aiAnalyzing ? "AI 分析中..." : "AI 自动分析进度与状态"}
             </button>
 
-            {/* Progress Slider */}
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">完成进度 ({progressForm.progress}%)</label>
               <input type="range" min="0" max="100" value={progressForm.progress} onChange={e => setProgressForm(f => ({ ...f, progress: Number(e.target.value) }))} className="w-full accent-blue-700" />
               <div className="flex justify-between text-xs text-gray-400 mt-1"><span>0%</span><span>50%</span><span>100%</span></div>
             </div>
 
-            {/* Status Selector */}
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">任务状态</label>
               <div className="flex gap-2">
@@ -461,6 +500,7 @@ export default function Tasks() {
         </div>
       )}
 
+      {/* Quarter Edit Modal */}
       {quarterModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setQuarterModal(null)}>
           <div className="bg-white rounded-xl p-6 w-full max-w-2xl shadow-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
