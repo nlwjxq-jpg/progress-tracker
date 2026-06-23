@@ -8,25 +8,6 @@ import { format } from "date-fns"
 import { Plus, Search, Edit, FileText, Sparkles, Wand2, Trash2, Download } from "lucide-react"
 import ConfidentialNotice from "../components/ConfidentialNotice";
 
-function ThResize({ children, col, width, sortable, onSort, asc }) {
-  const w = width ? { width: width + 'px', minWidth: width + 'px' } : { minWidth: '60px' }
-  return (
-    <th className="pb-2 font-medium relative group" style={w}>
-      <div className="flex items-center gap-1">
-        <span className={sortable ? "cursor-pointer select-none" : ""} onClick={sortable ? onSort : undefined}>
-          {children}
-        </span>
-        {sortable && (
-          <span className="text-blue-600 text-xs">{asc ? "↑" : sortField === col ? "↓" : ""}</span>
-        )}
-      </div>
-      <div
-        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-blue-300"
-        onMouseDown={(e) => startResize(col, e)}
-      />
-    </th>
-  )
-}
 
 
 function getFunctionUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-assign` }
@@ -236,6 +217,26 @@ export default function Tasks() {
   }
 
   const sortedTasks = sortTasks(tasks)
+
+  function ThResize({ children, col, width, sortable, onSort, asc }) {
+    const w = width ? { width: width + 'px', minWidth: width + 'px' } : { minWidth: '60px' }
+    return (
+      <th className="pb-2 font-medium relative group" style={w}>
+        <div className="flex items-center gap-1">
+          <span className={sortable ? "cursor-pointer select-none" : ""} onClick={sortable ? onSort : undefined}>
+            {children}
+          </span>
+          {sortable && (
+            <span className="text-blue-600 text-xs">{asc ? "↑" : "↓"}</span>
+          )}
+        </div>
+        <div
+          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-blue-300"
+          onMouseDown={(e) => startResize(col, e)}
+        />
+      </th>
+    )
+  }
 
   async function handleAiBatchMatch() {
     setAiMatching(true); setAiMsg("正在调用 AI 分析...")
