@@ -392,6 +392,10 @@ export default function Tasks() {
                 <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("type")}>任务类型<SortArrow field="type" /></th>
                 <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("title")}>任务名称<SortArrow field="title" /></th>
                 <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("last_month_target")}>上月工作目标<SortArrow field="last_month_target" /></th>
+                <th className="pb-2 font-medium whitespace-nowrap">Q1目标</th>
+                <th className="pb-2 font-medium whitespace-nowrap">Q2目标</th>
+                <th className="pb-2 font-medium whitespace-nowrap">Q3目标</th>
+                <th className="pb-2 font-medium whitespace-nowrap">Q4目标</th>
                 <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("work_assignee")}>工作负责人<SortArrow field="work_assignee" /></th>
                 <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("dept_leader")}>部门负责人<SortArrow field="dept_leader" /></th>
                 <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("due_date")}>截止日期<SortArrow field="due_date" /></th>
@@ -435,6 +439,18 @@ export default function Tasks() {
                       </div>
                     </td>
                     <td className="py-2.5"><span className="text-xs text-gray-600 whitespace-pre-wrap max-w-40 block truncate">{lastMonthTarget || "-"}</span></td>
+                    <td className="py-2.5">
+                      <span className="text-xs text-purple-700 whitespace-pre-wrap" title={task.q1_target || ""}>{task.q1_target ? task.q1_target.slice(0,30) + (task.q1_target.length>30?"...":"") : "-"}</span>
+                    </td>
+                    <td className="py-2.5">
+                      <span className="text-xs text-purple-700 whitespace-pre-wrap" title={task.q2_target || ""}>{task.q2_target ? task.q2_target.slice(0,30) + (task.q2_target.length>30?"...":"") : "-"}</span>
+                    </td>
+                    <td className="py-2.5">
+                      <span className="text-xs text-purple-700 whitespace-pre-wrap" title={task.q3_target || ""}>{task.q3_target ? task.q3_target.slice(0,30) + (task.q3_target.length>30?"...":"") : "-"}</span>
+                    </td>
+                    <td className="py-2.5">
+                      <span className="text-xs text-purple-700 whitespace-pre-wrap" title={task.q4_target || ""}>{task.q4_target ? task.q4_target.slice(0,30) + (task.q4_target.length>30?"...":"") : "-"}</span>
+                    </td>
                     <td className="py-2.5"><span className={`text-sm ${!workAssignee ? "text-orange-500 font-medium" : ""}`}>{workAssignee || "未分配"}</span></td>
                     <td className="py-2.5"><span className={`text-sm ${!deptLeader ? "text-orange-500 font-medium" : ""}`}>{deptLeader || "未分配"}</span></td>
                     <td className="py-2.5 whitespace-nowrap">{task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "-"}</td>
