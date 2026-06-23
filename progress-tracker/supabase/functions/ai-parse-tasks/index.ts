@@ -59,15 +59,21 @@ Deno.serve(async (req) => {
   "title": "任务名称",
   "description": "任务描述或补充说明",
   "due_date": "截止日期（YYYY-MM-DD格式，如无明确日期则填null）",
-  "priority": "low|normal|high|urgent（根据任务紧急程度判断，默认normal）"
+  "priority": "low|normal|high|urgent（根据任务紧急程度判断，默认normal）",
+  "q1_target": "Q1季度目标（如任务表中明确了该季度的工作目标则提取，否则为null或空字符串）",
+  "q2_target": "Q2季度目标（同上）",
+  "q3_target": "Q3季度目标（同上）",
+  "q4_target": "Q4季度目标（同上）"
 }
 
 规则：
 1. 识别表格、列表、段落中的所有独立任务
 2. 同类子任务应拆分为独立条目
 3. 没有明确截止日期的，due_date 填 null
-4. 只返回 JSON 数组，不要带任何 markdown 标记或解释文字
-5. 如果内容中没有任何可识别的任务，返回空数组 []`,
+4. 如果任务表中按季度列明了每季度目标，请提取到对应的 q1~q4_target 字段中
+5. 如果某季度目标未明确，该字段填 null 或空字符串
+6. 只返回 JSON 数组，不要带任何 markdown 标记或解释文字
+7. 如果内容中没有任何可识别的任务，返回空数组 []`,
             },
             {
               role: "user",

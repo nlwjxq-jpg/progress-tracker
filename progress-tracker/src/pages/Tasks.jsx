@@ -63,7 +63,7 @@ export default function Tasks() {
     const sourceTasks = selected.size > 0 ? sortedTasks.filter(t => selected.has(t.id)) : sortedTasks
     if (sourceTasks.length === 0) return
     const BOM = "\uFEFF"
-    const headers = ["序号", "任务标题", "任务类型", "工作负责人", "部门负责人", "优先级", "状态", "进度%", "上月工作目标", "上月工作进展", "本月工作目标", "截止日期", "任务描述"]
+    const headers = ["序号", "任务标题", "任务类型", "工作负责人", "部门负责人", "优先级", "状态", "进度%", "Q1目标", "Q2目标", "Q3目标", "Q4目标", "上月工作目标", "上月工作进展", "本月工作目标", "截止日期", "任务描述"]
     const rows = sourceTasks.map((t, i) => [
       i + 1,
       t.title,
@@ -73,6 +73,10 @@ export default function Tasks() {
       t.priority || "",
       STATUS_LABELS[t.status] || t.status || "",
       (t.progress || 0) + "%",
+      t.q1_target || "",
+      t.q2_target || "",
+      t.q3_target || "",
+      t.q4_target || "",
       t.last_month_target || "",
       t.last_month_progress || "",
       t.this_month_target || "",
@@ -418,6 +422,14 @@ export default function Tasks() {
                         <div>
                           <div className="font-medium">{task.title}</div>
                           {task.description && <div className="text-xs text-gray-400 mt-0.5">{task.description.slice(0, 60)}</div>}
+                        {(task.q1_target || task.q2_target || task.q3_target || task.q4_target) && (
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {task.q1_target && <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded" title={task.q1_target}>Q1: {task.q1_target.slice(0,20)}{task.q1_target.length>20?'...':''}</span>}
+                            {task.q2_target && <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded" title={task.q2_target}>Q2: {task.q2_target.slice(0,20)}{task.q2_target.length>20?'...':''}</span>}
+                            {task.q3_target && <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded" title={task.q3_target}>Q3: {task.q3_target.slice(0,20)}{task.q3_target.length>20?'...':''}</span>}
+                            {task.q4_target && <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded" title={task.q4_target}>Q4: {task.q4_target.slice(0,20)}{task.q4_target.length>20?'...':''}</span>}
+                          </div>
+                        )}
                         </div>
                         <Link to={`/tasks/${task.id}/edit`} className="text-blue-500 hover:text-blue-700 shrink-0" title="编辑任务"><Edit size={14} /></Link>
                       </div>

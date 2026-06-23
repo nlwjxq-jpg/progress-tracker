@@ -119,6 +119,10 @@ export default function ImportTasks() {
           status: 'pending',
           progress: 0,
           department_id: effectiveDeptId || null,
+          q1_target: task.q1_target || null,
+          q2_target: task.q2_target || null,
+          q3_target: task.q3_target || null,
+          q4_target: task.q4_target || null,
           created_at: now,
           updated_at: now
         })
