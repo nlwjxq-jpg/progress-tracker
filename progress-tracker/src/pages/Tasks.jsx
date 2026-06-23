@@ -30,6 +30,7 @@ export default function Tasks() {
   const [selfOnly, setSelfOnly] = useState(false)
   const [reportGenerating, setReportGenerating] = useState(false)
   const [reportMsg, setReportMsg] = useState("")
+  const [goals, setGoals] = useState([])
   const [sortField, setSortField] = useState("")
   const [sortDir, setSortDir] = useState("asc")
   const [colWidths, setColWidths] = useState({})
@@ -45,12 +46,14 @@ export default function Tasks() {
       if (!isAdmin && !isDeptAdmin && userDeptId) {
         taskQuery = taskQuery.eq("department_id", userDeptId)
       }
-      const [{ data: taskData }, { data: memberData }] = await Promise.all([
+      const [{ data: taskData }, { data: memberData }, { data: goalData }] = await Promise.all([
         taskQuery,
-        supabase.from(TABLES.MEMBERS).select("*")
+        supabase.from(TABLES.MEMBERS).select("*"),
+        supabase.from("goals").select("*")
       ])
       setTasks(taskData || [])
       setMembers(memberData || [])
+      setGoals(goalData || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
