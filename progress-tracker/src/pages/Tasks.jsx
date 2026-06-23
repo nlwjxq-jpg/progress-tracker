@@ -346,18 +346,86 @@ export default function Tasks() {
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-gray-500">
+              <tr className="border-b text-left text-gray-500 text-xs">
                 <th className="pb-2 font-medium w-8">
                   <input type="checkbox" className="accent-blue-600" checked={filteredTasks.length > 0 && filteredTasks.every(t => selected.has(t.id))} onChange={toggleSelectAll} />
                 </th>
-                <th className="pb-2 font-medium">任务类型</th>
-                <th className="pb-2 font-medium">任务名称</th>
-                <th className="pb-2 font-medium whitespace-nowrap">上月工作目标</th>
-                <th className="pb-2 font-medium whitespace-nowrap">工作负责人</th>
-                <th className="pb-2 font-medium whitespace-nowrap">部门负责人</th>
-                <th className="pb-2 font-medium">截止日期</th>
-                <th className="pb-2 font-medium">状态</th>
-                <th className="pb-2 font-medium">进度</th>
+                <th className="pb-2 font-medium relative group" style={colWidths.category ? {width:colWidths.category+"px"} : {}}>
+                  <div className="flex items-center gap-1">
+                    <span className="cursor-pointer select-none" onClick={() => toggleSort("type")}>任务类别</span>
+                    <SortArrow field="type" />
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("category", e)} />
+                </th>
+                <th className="pb-2 font-medium relative group" style={colWidths.goal_title ? {width:colWidths.goal_title+"px"} : {}}>
+                  <div className="flex items-center gap-1">
+                    <span className="cursor-pointer select-none" onClick={() => toggleSort("goal_title")}>考核目标</span>
+                    <SortArrow field="goal_title" />
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("goal_title", e)} />
+                </th>
+                <th className="pb-2 font-medium relative group" style={colWidths.title ? {width:colWidths.title+"px"} : {}}>
+                  <div className="flex items-center gap-1">
+                    <span className="cursor-pointer select-none" onClick={() => toggleSort("title")}>具体任务</span>
+                    <SortArrow field="title" />
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("title", e)} />
+                </th>
+                <th className="pb-2 font-medium whitespace-nowrap relative group" style={colWidths.due_date ? {width:colWidths.due_date+"px"} : {}}>
+                  <div className="flex items-center gap-1">
+                    <span className="cursor-pointer select-none" onClick={() => toggleSort("due_date")}>截止日期</span>
+                    <SortArrow field="due_date" />
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("due_date", e)} />
+                </th>
+                <th className="pb-2 font-medium relative group" style={colWidths.status ? {width:colWidths.status+"px"} : {}}>
+                  <div className="flex items-center gap-1">
+                    <span className="cursor-pointer select-none" onClick={() => toggleSort("status")}>状态</span>
+                    <SortArrow field="status" />
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("status", e)} />
+                </th>
+                <th className="pb-2 font-medium whitespace-nowrap relative group" style={colWidths.work_assignee ? {width:colWidths.work_assignee+"px"} : {}}>
+                  <div className="flex items-center gap-1">
+                    <span className="cursor-pointer select-none" onClick={() => toggleSort("work_assignee")}>工作责任人</span>
+                    <SortArrow field="work_assignee" />
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("work_assignee", e)} />
+                </th>
+                <th className="pb-2 font-medium whitespace-nowrap relative group" style={colWidths.dept_leader ? {width:colWidths.dept_leader+"px"} : {}}>
+                  <div className="flex items-center gap-1">
+                    <span className="cursor-pointer select-none" onClick={() => toggleSort("dept_leader")}>部门负责人</span>
+                    <SortArrow field="dept_leader" />
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("dept_leader", e)} />
+                </th>
+                <th className="pb-2 font-medium whitespace-nowrap relative group" style={colWidths.q1_target ? {width:colWidths.q1_target+"px"} : {}}>
+                  <span>一季度</span>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("q1_target", e)} />
+                </th>
+                <th className="pb-2 font-medium whitespace-nowrap relative group" style={colWidths.q2_target ? {width:colWidths.q2_target+"px"} : {}}>
+                  <span>二季度</span>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("q2_target", e)} />
+                </th>
+                <th className="pb-2 font-medium whitespace-nowrap relative group" style={colWidths.q3_target ? {width:colWidths.q3_target+"px"} : {}}>
+                  <span>三季度</span>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("q3_target", e)} />
+                </th>
+                <th className="pb-2 font-medium whitespace-nowrap relative group" style={colWidths.q4_target ? {width:colWidths.q4_target+"px"} : {}}>
+                  <span>四季度</span>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("q4_target", e)} />
+                </th>
+                <th className="pb-2 font-medium whitespace-nowrap relative group" style={colWidths.last_month_target ? {width:colWidths.last_month_target+"px"} : {}}>
+                  <span>上月工作目标</span>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("last_month_target", e)} />
+                </th>
+                <th className="pb-2 font-medium relative group" style={colWidths.progress ? {width:colWidths.progress+"px", minWidth:"120px"} : {minWidth:"120px"}}>
+                  <div className="flex items-center gap-1">
+                    <span className="cursor-pointer select-none" onClick={() => toggleSort("progress")}>进度</span>
+                    <SortArrow field="progress" />
+                  </div>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400" onMouseDown={(e) => doResizeStart("progress", e)} />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -373,36 +441,51 @@ export default function Tasks() {
                     <td className="py-2.5 pl-2">
                       <input type="checkbox" className="accent-blue-600" checked={isChecked} onChange={() => toggleSelect(task.id)} />
                     </td>
-                    <td className="py-2.5">
-                      <span className={`badge text-xs ${task.is_key ? "badge-blue" : "badge-gray"}`}>
-                        {task.is_key ? "重点任务" : "日常任务"}
-                      </span>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.category ? colWidths.category+"px" : "80px", wordBreak: "break-all" }}>
+                      <span className="font-medium text-gray-700">{task.is_key ? "重点" : "日常"}</span>
                     </td>
-                    <td className="py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <div className="font-medium">{task.title}</div>
-                          {task.description && <div className="text-xs text-gray-400 mt-0.5">{task.description.slice(0, 60)}</div>}
-                        </div>
-                        <Link to={`/tasks/${task.id}/edit`} className="text-blue-500 hover:text-blue-700 shrink-0" title="编辑任务"><Edit size={14} /></Link>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.goal_title ? colWidths.goal_title+"px" : "120px", wordBreak: "break-all" }}>
+                      {goals.find(g => g.id === task.goal_id)?.title ? <span className="text-gray-600" title={goals.find(g=>g.id===task.goal_id)?.title}>{goals.find(g=>g.id===task.goal_id)?.title.slice(0,30)}{(goals.find(g=>g.id===task.goal_id)?.title||"").length>30?"...":""}</span> : <span className="text-gray-300">-</span>}
+                    </td>
+                    <td className="py-2.5" style={{ maxWidth: colWidths.title ? colWidths.title+"px" : "160px" }}>
+                      <div className="text-xs whitespace-pre-wrap" style={{ wordBreak: "break-all" }}>
+                        <span className="font-medium">{task.title}</span>
+                        {task.description && <div className="text-gray-400 mt-0.5">{task.description.slice(0, 60)}</div>}
                       </div>
+                      <Link to={`/tasks/${task.id}/edit`} className="text-blue-500 hover:text-blue-700 inline-block mt-0.5" title="编辑任务"><Edit size={12} /></Link>
                     </td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q1_target ? colWidths.q1_target+"px" : "90px", wordBreak: "break-all" }} title={task.q1_target} onClick={() => openQuarterModal(task)}><span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q1_target || "-"}</span></td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q2_target ? colWidths.q2_target+"px" : "90px", wordBreak: "break-all" }} title={task.q2_target} onClick={() => openQuarterModal(task)}><span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q2_target || "-"}</span></td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q3_target ? colWidths.q3_target+"px" : "90px", wordBreak: "break-all" }} title={task.q3_target} onClick={() => openQuarterModal(task)}><span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q3_target || "-"}</span></td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q4_target ? colWidths.q4_target+"px" : "90px", wordBreak: "break-all" }} title={task.q4_target} onClick={() => openQuarterModal(task)}><span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q4_target || "-"}</span></td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.last_month_target ? colWidths.last_month_target+"px" : "100px", wordBreak: "break-all" }} title={lastMonthTarget}>{lastMonthTarget || "-"}</td>
-                    <td className="py-2.5"><span className={`text-sm ${!workAssignee ? "text-orange-500 font-medium" : ""}`}>{workAssignee || "未分配"}</span></td>
-                    <td className="py-2.5"><span className={`text-sm ${!deptLeader ? "text-orange-500 font-medium" : ""}`}>{deptLeader || "未分配"}</span></td>
-                    <td className="py-2.5 whitespace-nowrap">{task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "-"}</td>
+                    <td className="py-2.5 whitespace-nowrap text-xs">{task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "-"}</td>
                     <td className="py-2.5">
-                      <span className={`${task.status === "completed" ? "badge-green" : status === "overdue" ? "badge-red" : status === "near-due" ? "badge-yellow" : "badge-green"} inline-block`}>
+                      <span className={`${
+                        task.status === "completed" ? "badge-green" :
+                        status === "overdue" ? "badge-red" :
+                        status === "near-due" ? "badge-yellow" : "badge-green"
+                      } text-xs inline-block`}>
                         {task.status === "completed" ? "已完成" : STATUS_LABELS[status]}
                       </span>
                     </td>
-                    <td className="py-2.5">
+                    <td className="py-2.5 text-xs">
+                      <span className={`${!workAssignee ? "text-orange-500 font-medium" : "text-gray-700"}`} title={workAssignee}>{workAssignee || "未分配"}</span>
+                    </td>
+                    <td className="py-2.5 text-xs">
+                      <span className={`${!deptLeader ? "text-orange-500 font-medium" : "text-gray-700"}`} title={deptLeader}>{deptLeader || "未分配"}</span>
+                    </td>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q1_target ? colWidths.q1_target+"px" : "90px", wordBreak: "break-all" }} title={task.q1_target} onClick={() => openQuarterModal(task)}>
+                      <span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q1_target || "-"}</span>
+                    </td>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q2_target ? colWidths.q2_target+"px" : "90px", wordBreak: "break-all" }} title={task.q2_target} onClick={() => openQuarterModal(task)}>
+                      <span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q2_target || "-"}</span>
+                    </td>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q3_target ? colWidths.q3_target+"px" : "90px", wordBreak: "break-all" }} title={task.q3_target} onClick={() => openQuarterModal(task)}>
+                      <span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q3_target || "-"}</span>
+                    </td>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q4_target ? colWidths.q4_target+"px" : "90px", wordBreak: "break-all" }} title={task.q4_target} onClick={() => openQuarterModal(task)}>
+                      <span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q4_target || "-"}</span>
+                    </td>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.last_month_target ? colWidths.last_month_target+"px" : "100px", wordBreak: "break-all" }} title={lastMonthTarget}>{lastMonthTarget || "-"}</td>
+                    <td className="py-2.5" style={{ minWidth: "120px" }}>
                       <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
                           <div className={`h-full rounded-full transition-all ${task.status === "completed" ? "bg-green-500" : (task.progress || 0) > 70 ? "bg-blue-500" : (task.progress || 0) > 30 ? "bg-yellow-500" : "bg-gray-400"}`} style={{ width: `${task.progress || 0}%` }} />
                         </div>
                         <span className="text-xs text-gray-500">{task.progress || 0}%</span>
