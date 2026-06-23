@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react"
+﻿import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { supabase, TABLES } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
@@ -27,9 +27,6 @@ export default function Tasks() {
   const [selfOnly, setSelfOnly] = useState(false)
   const [reportGenerating, setReportGenerating] = useState(false)
   const [reportMsg, setReportMsg] = useState("")
-  const [goals, setGoals] = useState([])
-  const [colWidths, setColWidths] = useState({})
-  const [quarterModal, setQuarterModal] = useState(null)
 
   const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
 
@@ -47,15 +44,12 @@ export default function Tasks() {
       ])
       setTasks(taskData || [])
       setMembers(memberData || [])
-      setGoals(goalData || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
 
   const deptLeaders = members.filter(m => m.role.includes("部长") || m.role.includes("副部长"))
   const workMembers = members.filter(m => !(m.role.includes("部长") || m.role.includes("副部长")))
-  const resizingRef = useRef(null)
-  const doResizeStart = (col, e) => { resizingRef.current = { col, x: e.clientX }; const mv = (e2) => { if (!resizingRef.current) return; const d = e2.clientX - resizingRef.current.x; setColWidths(w => { const c = (w[col] || 80) + d; return { ...w, [col]: c < 60 ? 60 : c } }); resizingRef.current.x = e2.clientX }; const up = () => { resizingRef.current = null; document.removeEventListener("mousemove", mv); document.removeEventListener("mouseup", up) }; document.addEventListener("mousemove", mv); document.addEventListener("mouseup", up); e.preventDefault() }
 
   function getTaskCount(memberName) {
     if (!memberName) return 0
@@ -221,9 +215,6 @@ export default function Tasks() {
     { key: "overdue", label: "已逾期" }, { key: "near-due", label: "临近截止" }, { key: "completed", label: "已完成" },
   ]
 
-  function openQuarterModal(task) { setQuarterModal({ id: task.id, title: task.title, q1: task.q1_target || "", q2: task.q2_target || "", q3: task.q3_target || "", q4: task.q4_target || "" }) }
-  async function saveQuarterModal() { if (!quarterModal) return; try { await supabase.from(TABLES.TASKS).update({ q1_target: quarterModal.q1 || null, q2_target: quarterModal.q2 || null, q3_target: quarterModal.q3 || null, q4_target: quarterModal.q4 || null }).eq("id", quarterModal.id); setQuarterModal(null); loadData() } catch (err) { alert("保存季度目标失败: " + (err.message || "")) } }
-
   function openProgressModal(task) {
     setProgressModal(task)
     setProgressForm({
@@ -387,11 +378,7 @@ export default function Tasks() {
                         <Link to={`/tasks/${task.id}/edit`} className="text-blue-500 hover:text-blue-700 shrink-0" title="编辑任务"><Edit size={14} /></Link>
                       </div>
                     </td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q1_target ? colWidths.q1_target+"px" : "90px", wordBreak: "break-all" }} title={task.q1_target} onClick={() => openQuarterModal(task)}><span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q1_target || "-"}</span></td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q2_target ? colWidths.q2_target+"px" : "90px", wordBreak: "break-all" }} title={task.q2_target} onClick={() => openQuarterModal(task)}><span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q2_target || "-"}</span></td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q3_target ? colWidths.q3_target+"px" : "90px", wordBreak: "break-all" }} title={task.q3_target} onClick={() => openQuarterModal(task)}><span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q3_target || "-"}</span></td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q4_target ? colWidths.q4_target+"px" : "90px", wordBreak: "break-all" }} title={task.q4_target} onClick={() => openQuarterModal(task)}><span className="cursor-pointer hover:bg-yellow-50 rounded px-0.5">{task.q4_target || "-"}</span></td>
-                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.last_month_target ? colWidths.last_month_target+"px" : "100px", wordBreak: "break-all" }} title={lastMonthTarget}>{lastMonthTarget || "-"}</td>
+                    <td className="py-2.5"><span className="text-xs text-gray-600 whitespace-pre-wrap max-w-40 block truncate">{lastMonthTarget || "-"}</span></td>
                     <td className="py-2.5"><span className={`text-sm ${!workAssignee ? "text-orange-500 font-medium" : ""}`}>{workAssignee || "未分配"}</span></td>
                     <td className="py-2.5"><span className={`text-sm ${!deptLeader ? "text-orange-500 font-medium" : ""}`}>{deptLeader || "未分配"}</span></td>
                     <td className="py-2.5 whitespace-nowrap">{task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "-"}</td>
@@ -462,27 +449,6 @@ export default function Tasks() {
             <div className="flex gap-2 justify-end pt-2">
               <button className="btn-secondary" onClick={() => setProgressModal(null)}>取消</button>
               <button className="btn-primary" onClick={saveProgress} disabled={savingProgress}>{savingProgress ? "保存中..." : "保存"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {quarterModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setQuarterModal(null)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-2xl shadow-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold">编辑季度目标</h3>
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm font-medium text-gray-700">{quarterModal.title}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-sm font-medium text-gray-600 mb-1">一季度目标</label><textarea className="input-field" rows={4} value={quarterModal.q1} onChange={e => setQuarterModal(f => ({ ...f, q1: e.target.value }))} placeholder="Q1" /></div>
-              <div><label className="block text-sm font-medium text-gray-600 mb-1">二季度目标</label><textarea className="input-field" rows={4} value={quarterModal.q2} onChange={e => setQuarterModal(f => ({ ...f, q2: e.target.value }))} placeholder="Q2" /></div>
-              <div><label className="block text-sm font-medium text-gray-600 mb-1">三季度目标</label><textarea className="input-field" rows={4} value={quarterModal.q3} onChange={e => setQuarterModal(f => ({ ...f, q3: e.target.value }))} placeholder="Q3" /></div>
-              <div><label className="block text-sm font-medium text-gray-600 mb-1">四季度目标</label><textarea className="input-field" rows={4} value={quarterModal.q4} onChange={e => setQuarterModal(f => ({ ...f, q4: e.target.value }))} placeholder="Q4" /></div>
-            </div>
-            <div className="flex gap-2 justify-end pt-2">
-              <button className="btn-secondary" onClick={() => setQuarterModal(null)}>取消</button>
-              <button className="btn-primary" onClick={saveQuarterModal}>保存全部</button>
             </div>
           </div>
         </div>
