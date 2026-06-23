@@ -195,6 +195,8 @@ export default function Tasks() {
         case "dept_leader": va = a.dept_leader || ""; vb = b.dept_leader || ""; break
         case "due_date": va = a.due_date || ""; vb = b.due_date || ""; break
         case "status": va = a.status || ""; vb = b.status || ""; break
+        case "type": va = a.is_key ? 1 : 2; vb = b.is_key ? 1 : 2; break
+        case "goal_title": va = goals.find(g => g.id === a.goal_id)?.title || ""; vb = goals.find(g => g.id === b.goal_id)?.title || ""; break
         case "progress": va = a.progress || 0; vb = b.progress || 0; break
         default: return 0
       }
@@ -447,22 +449,23 @@ export default function Tasks() {
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b text-left text-gray-500">
+              <tr className="border-b text-left text-gray-500 text-xs">
                 <th className="pb-2 font-medium w-8">
                   <input type="checkbox" className="accent-blue-600" checked={filteredTasks.length > 0 && filteredTasks.every(t => selected.has(t.id))} onChange={toggleSelectAll} />
                 </th>
-                <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("type")}>任务类型<SortArrow field="type" /></th>
-                <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("title")}>任务名称<SortArrow field="title" /></th>
-                <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("last_month_target")}>上月工作目标<SortArrow field="last_month_target" /></th>
-                <th className="pb-2 font-medium whitespace-nowrap">Q1目标</th>
-                <th className="pb-2 font-medium whitespace-nowrap">Q2目标</th>
-                <th className="pb-2 font-medium whitespace-nowrap">Q3目标</th>
-                <th className="pb-2 font-medium whitespace-nowrap">Q4目标</th>
-                <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("work_assignee")}>工作负责人<SortArrow field="work_assignee" /></th>
-                <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("dept_leader")}>部门负责人<SortArrow field="dept_leader" /></th>
-                <th className="pb-2 font-medium whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("due_date")}>截止日期<SortArrow field="due_date" /></th>
-                <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("status")}>状态<SortArrow field="status" /></th>
-                <th className="pb-2 font-medium cursor-pointer select-none" onClick={() => toggleSort("progress")}>进度<SortArrow field="progress" /></th>
+                <ThResize col="category" width={colWidths.category} sortable onSort={() => toggleSort("type")} asc={sortDir === "asc" && sortField === "type"}>任务类别</ThResize>
+                <ThResize col="goal_title" width={colWidths.goal_title} sortable onSort={() => toggleSort("goal_title")} asc={sortDir === "asc" && sortField === "goal_title"}>考核目标</ThResize>
+                <ThResize col="title" width={colWidths.title} sortable onSort={() => toggleSort("title")} asc={sortDir === "asc" && sortField === "title"}>具体任务</ThResize>
+                <ThResize col="due_date" width={colWidths.due_date} sortable onSort={() => toggleSort("due_date")} asc={sortDir === "asc" && sortField === "due_date"}>截止日期</ThResize>
+                <ThResize col="status" width={colWidths.status} sortable onSort={() => toggleSort("status")} asc={sortDir === "asc" && sortField === "status"}>状态</ThResize>
+                <ThResize col="work_assignee" width={colWidths.work_assignee} sortable onSort={() => toggleSort("work_assignee")} asc={sortDir === "asc" && sortField === "work_assignee"}>工作责任人</ThResize>
+                <ThResize col="dept_leader" width={colWidths.dept_leader} sortable onSort={() => toggleSort("dept_leader")} asc={sortDir === "asc" && sortField === "dept_leader"}>部门负责人</ThResize>
+                <ThResize col="q1_target" width={colWidths.q1_target}>一季度</ThResize>
+                <ThResize col="q2_target" width={colWidths.q2_target}>二季度</ThResize>
+                <ThResize col="q3_target" width={colWidths.q3_target}>三季度</ThResize>
+                <ThResize col="q4_target" width={colWidths.q4_target}>四季度</ThResize>
+                <ThResize col="last_month_target" width={colWidths.last_month_target}>上月工作目标</ThResize>
+                <ThResize col="progress" width={colWidths.progress} sortable onSort={() => toggleSort("progress")} asc={sortDir === "asc" && sortField === "progress"}>进度</ThResize>
               </tr>
             </thead>
             <tbody>
