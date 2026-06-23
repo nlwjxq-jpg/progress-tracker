@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import { supabase, TABLES } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
@@ -7,6 +7,27 @@ import { getAiApiUrl } from "../lib/deepseek"
 import { format } from "date-fns"
 import { Plus, Search, Edit, FileText, Sparkles, Wand2, Trash2, Download } from "lucide-react"
 import ConfidentialNotice from "../components/ConfidentialNotice";
+
+function ThResize({ children, col, width, sortable, onSort, asc }) {
+  const w = width ? { width: width + 'px', minWidth: width + 'px' } : { minWidth: '60px' }
+  return (
+    <th className="pb-2 font-medium relative group" style={w}>
+      <div className="flex items-center gap-1">
+        <span className={sortable ? "cursor-pointer select-none" : ""} onClick={sortable ? onSort : undefined}>
+          {children}
+        </span>
+        {sortable && (
+          <span className="text-blue-600 text-xs">{asc ? "↑" : sortField === col ? "↓" : ""}</span>
+        )}
+      </div>
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400 group-hover:bg-blue-300"
+        onMouseDown={(e) => startResize(col, e)}
+      />
+    </th>
+  )
+}
+
 
 function getFunctionUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-assign` }
 function getAnalyzeUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-progress` }
@@ -30,6 +51,8 @@ export default function Tasks() {
   const [reportMsg, setReportMsg] = useState("")
   const [sortField, setSortField] = useState("")
   const [sortDir, setSortDir] = useState("asc")
+  const [colWidths, setColWidths] = useState({})
+  const [editingQuarter, setEditingQuarter] = useState(null) // {taskId, field, value}
 
   const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
 
@@ -53,6 +76,41 @@ export default function Tasks() {
 
   const deptLeaders = members.filter(m => m.role.includes("部长") || m.role.includes("副部长"))
   const workMembers = members.filter(m => !(m.role.includes("部长") || m.role.includes("副部长")))
+  // Column resize
+  const resizingRef = React.useRef(null)
+
+  function startResize(col, e) {
+    resizingRef.current = { col, startX: e.clientX }
+    document.addEventListener('mousemove', onResizeMove)
+    document.addEventListener('mouseup', stopResize)
+    e.preventDefault()
+  }
+
+  function onResizeMove(e) {
+    if (!resizingRef.current) return
+    const { col, startX } = resizingRef.current
+    const diff = e.clientX - startX
+    setColWidths(w => {
+      const current = (w[col] || 0) + diff
+      const minW = 60
+      return { ...w, [col]: current < minW ? minW : current }
+    })
+    resizingRef.current.startX = e.clientX
+  }
+
+  function stopResize() {
+    resizingRef.current = null
+    document.removeEventListener('mousemove', onResizeMove)
+    document.removeEventListener('mouseup', stopResize)
+
+  async function saveQuarterTarget(taskId, field, value) {
+    await supabase.from(TABLES.TASKS).update({ [field]: value || null }).eq("id", taskId)
+    setEditingQuarter(null)
+    loadData()
+  }
+
+  }
+
 
   function getTaskCount(memberName) {
     if (!memberName) return 0
@@ -416,52 +474,157 @@ export default function Tasks() {
                     <td className="py-2.5 pl-2">
                       <input type="checkbox" className="accent-blue-600" checked={isChecked} onChange={() => toggleSelect(task.id)} />
                     </td>
-                    <td className="py-2.5">
-                      <span className={`badge text-xs ${task.is_key ? "badge-blue" : "badge-gray"}`}>
-                        {task.is_key ? "重点任务" : "日常任务"}
-                      </span>
+                    <td className="py-2.5 text-xs whitespace-pre-wrap" style={{ maxWidth: colWidths.category ? colWidths.category + 'px' : '120px', wordBreak: 'break-all' }}>
+                      <span className="font-medium text-gray-700">{task.is_key ? "重点" : "日常"}</span>
                     </td>
-                    <td className="py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <div className="font-medium">{task.title}</div>
-                          {task.description && <div className="text-xs text-gray-400 mt-0.5">{task.description.slice(0, 60)}</div>}
-                        {(task.q1_target || task.q2_target || task.q3_target || task.q4_target) && (
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {task.q1_target && <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded" title={task.q1_target}>Q1: {task.q1_target.slice(0,20)}{task.q1_target.length>20?'...':''}</span>}
-                            {task.q2_target && <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded" title={task.q2_target}>Q2: {task.q2_target.slice(0,20)}{task.q2_target.length>20?'...':''}</span>}
-                            {task.q3_target && <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded" title={task.q3_target}>Q3: {task.q3_target.slice(0,20)}{task.q3_target.length>20?'...':''}</span>}
-                            {task.q4_target && <span className="text-xs bg-purple-50 text-purple-600 px-1 rounded" title={task.q4_target}>Q4: {task.q4_target.slice(0,20)}{task.q4_target.length>20?'...':''}</span>}
-                          </div>
-                        )}
-                        </div>
-                        <Link to={`/tasks/${task.id}/edit`} className="text-blue-500 hover:text-blue-700 shrink-0" title="编辑任务"><Edit size={14} /></Link>
+                    <td className="py-2.5 text-xs whitespace-pre-wrap" style={{ maxWidth: colWidths.goal_title ? colWidths.goal_title + 'px' : '140px', wordBreak: 'break-all' }}>
+                      {goals.find(g => g.id === task.goal_id)?.title ? (
+                        <span className="text-gray-600" title={goals.find(g => g.id === task.goal_id)?.title}>{goals.find(g => g.id === task.goal_id)?.title.slice(0,40)}{(goals.find(g => g.id === task.goal_id)?.title.length||0)>40?'...':''}</span>
+                      ) : <span className="text-gray-300">-</span>}
+                    </td>
+                    <td className="py-2.5" style={{ maxWidth: colWidths.title ? colWidths.title + 'px' : '180px' }}>
+                      <div className="text-xs whitespace-pre-wrap" style={{ wordBreak: 'break-all' }}>
+                        <span className="font-medium">{task.title}</span>
+                        {task.description && <div className="text-gray-400 mt-0.5">{task.description.slice(0, 80)}</div>}
                       </div>
+                      <Link to={`/tasks/${task.id}/edit`} className="text-blue-500 hover:text-blue-700 inline-block mt-0.5" title="编辑任务"><Edit size={12} /></Link>
                     </td>
-                    <td className="py-2.5"><span className="text-xs text-gray-600 whitespace-pre-wrap max-w-40 block truncate">{lastMonthTarget || "-"}</span></td>
+                    <td className="py-2.5 whitespace-nowrap text-xs">{task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "-"}</td>
                     <td className="py-2.5">
-                      <span className="text-xs text-purple-700 whitespace-pre-wrap" title={task.q1_target || ""}>{task.q1_target ? task.q1_target.slice(0,30) + (task.q1_target.length>30?"...":"") : "-"}</span>
-                    </td>
-                    <td className="py-2.5">
-                      <span className="text-xs text-purple-700 whitespace-pre-wrap" title={task.q2_target || ""}>{task.q2_target ? task.q2_target.slice(0,30) + (task.q2_target.length>30?"...":"") : "-"}</span>
-                    </td>
-                    <td className="py-2.5">
-                      <span className="text-xs text-purple-700 whitespace-pre-wrap" title={task.q3_target || ""}>{task.q3_target ? task.q3_target.slice(0,30) + (task.q3_target.length>30?"...":"") : "-"}</span>
-                    </td>
-                    <td className="py-2.5">
-                      <span className="text-xs text-purple-700 whitespace-pre-wrap" title={task.q4_target || ""}>{task.q4_target ? task.q4_target.slice(0,30) + (task.q4_target.length>30?"...":"") : "-"}</span>
-                    </td>
-                    <td className="py-2.5"><span className={`text-sm ${!workAssignee ? "text-orange-500 font-medium" : ""}`}>{workAssignee || "未分配"}</span></td>
-                    <td className="py-2.5"><span className={`text-sm ${!deptLeader ? "text-orange-500 font-medium" : ""}`}>{deptLeader || "未分配"}</span></td>
-                    <td className="py-2.5 whitespace-nowrap">{task.due_date ? format(new Date(task.due_date), "yyyy-MM-dd") : "-"}</td>
-                    <td className="py-2.5">
-                      <span className={`${task.status === "completed" ? "badge-green" : status === "overdue" ? "badge-red" : status === "near-due" ? "badge-yellow" : "badge-green"} inline-block`}>
+                      <span className={`${
+                        task.status === "completed" ? "badge-green" :
+                        status === "overdue" ? "badge-red" :
+                        status === "near-due" ? "badge-yellow" : "badge-green"
+                      } text-xs inline-block`}>
                         {task.status === "completed" ? "已完成" : STATUS_LABELS[status]}
                       </span>
                     </td>
-                    <td className="py-2.5">
+                    <td className="py-2.5 text-xs">
+                      <span className={`${!workAssignee ? "text-orange-500 font-medium" : "text-gray-700"}`} title={workAssignee}>{workAssignee || "未分配"}</span>
+                    </td>
+                    <td className="py-2.5 text-xs">
+                      <span className={`${!deptLeader ? "text-orange-500 font-medium" : "text-gray-700"}`} title={deptLeader}>{deptLeader || "未分配"}</span>
+                    </td>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q1_target ? colWidths.q1_target + 'px' : '100px' }}>
+                      {editingQuarter && editingQuarter.taskId === task.id && editingQuarter.field === "q1_target" ? (
+                        <div className="flex gap-1">
+                          <textarea
+                            className="border border-blue-300 rounded px-1 py-0.5 text-xs w-full"
+                            rows={3}
+                            value={editingQuarter.value}
+                            onChange={e => setEditingQuarter({ ...editingQuarter, value: e.target.value })}
+                            onKeyDown={e => { if (e.key === 'Escape') setEditingQuarter(null) }}
+                            autoFocus
+                          />
+                          <div className="flex flex-col gap-0.5">
+                            <button className="text-green-600 hover:text-green-800 text-xs" onClick={() => saveQuarterTarget(task.id, "q1_target", editingQuarter.value)} title="保存">✓</button>
+                            <button className="text-gray-400 hover:text-gray-600 text-xs" onClick={() => setEditingQuarter(null)} title="取消">✕</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group relative">
+                          <span className="whitespace-pre-wrap cursor-pointer hover:bg-yellow-50 rounded px-0.5" title={task.q1_target} onClick={() => setEditingQuarter({ taskId: task.id, field: "q1_target", value: task.q1_target || "" })}>
+                            {task.q1_target || "-"}
+                          </span>
+                          <button
+                            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 bg-white rounded-full shadow text-xs px-0.5"
+                            onClick={() => setEditingQuarter({ taskId: task.id, field: "q1_target", value: task.q1_target || "" })}
+                            title="编辑Q1目标"
+                          >✎</button>
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q2_target ? colWidths.q2_target + 'px' : '100px' }}>
+                      {editingQuarter && editingQuarter.taskId === task.id && editingQuarter.field === "q2_target" ? (
+                        <div className="flex gap-1">
+                          <textarea
+                            className="border border-blue-300 rounded px-1 py-0.5 text-xs w-full"
+                            rows={3}
+                            value={editingQuarter.value}
+                            onChange={e => setEditingQuarter({ ...editingQuarter, value: e.target.value })}
+                            onKeyDown={e => { if (e.key === 'Escape') setEditingQuarter(null) }}
+                            autoFocus
+                          />
+                          <div className="flex flex-col gap-0.5">
+                            <button className="text-green-600 hover:text-green-800 text-xs" onClick={() => saveQuarterTarget(task.id, "q2_target", editingQuarter.value)} title="保存">✓</button>
+                            <button className="text-gray-400 hover:text-gray-600 text-xs" onClick={() => setEditingQuarter(null)} title="取消">✕</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group relative">
+                          <span className="whitespace-pre-wrap cursor-pointer hover:bg-yellow-50 rounded px-0.5" title={task.q2_target} onClick={() => setEditingQuarter({ taskId: task.id, field: "q2_target", value: task.q2_target || "" })}>
+                            {task.q2_target || "-"}
+                          </span>
+                          <button
+                            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 bg-white rounded-full shadow text-xs px-0.5"
+                            onClick={() => setEditingQuarter({ taskId: task.id, field: "q2_target", value: task.q2_target || "" })}
+                            title="编辑Q2目标"
+                          >✎</button>
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q3_target ? colWidths.q3_target + 'px' : '100px' }}>
+                      {editingQuarter && editingQuarter.taskId === task.id && editingQuarter.field === "q3_target" ? (
+                        <div className="flex gap-1">
+                          <textarea
+                            className="border border-blue-300 rounded px-1 py-0.5 text-xs w-full"
+                            rows={3}
+                            value={editingQuarter.value}
+                            onChange={e => setEditingQuarter({ ...editingQuarter, value: e.target.value })}
+                            onKeyDown={e => { if (e.key === 'Escape') setEditingQuarter(null) }}
+                            autoFocus
+                          />
+                          <div className="flex flex-col gap-0.5">
+                            <button className="text-green-600 hover:text-green-800 text-xs" onClick={() => saveQuarterTarget(task.id, "q3_target", editingQuarter.value)} title="保存">✓</button>
+                            <button className="text-gray-400 hover:text-gray-600 text-xs" onClick={() => setEditingQuarter(null)} title="取消">✕</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group relative">
+                          <span className="whitespace-pre-wrap cursor-pointer hover:bg-yellow-50 rounded px-0.5" title={task.q3_target} onClick={() => setEditingQuarter({ taskId: task.id, field: "q3_target", value: task.q3_target || "" })}>
+                            {task.q3_target || "-"}
+                          </span>
+                          <button
+                            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 bg-white rounded-full shadow text-xs px-0.5"
+                            onClick={() => setEditingQuarter({ taskId: task.id, field: "q3_target", value: task.q3_target || "" })}
+                            title="编辑Q3目标"
+                          >✎</button>
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2.5 text-xs" style={{ maxWidth: colWidths.q4_target ? colWidths.q4_target + 'px' : '100px' }}>
+                      {editingQuarter && editingQuarter.taskId === task.id && editingQuarter.field === "q4_target" ? (
+                        <div className="flex gap-1">
+                          <textarea
+                            className="border border-blue-300 rounded px-1 py-0.5 text-xs w-full"
+                            rows={3}
+                            value={editingQuarter.value}
+                            onChange={e => setEditingQuarter({ ...editingQuarter, value: e.target.value })}
+                            onKeyDown={e => { if (e.key === 'Escape') setEditingQuarter(null) }}
+                            autoFocus
+                          />
+                          <div className="flex flex-col gap-0.5">
+                            <button className="text-green-600 hover:text-green-800 text-xs" onClick={() => saveQuarterTarget(task.id, "q4_target", editingQuarter.value)} title="保存">✓</button>
+                            <button className="text-gray-400 hover:text-gray-600 text-xs" onClick={() => setEditingQuarter(null)} title="取消">✕</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group relative">
+                          <span className="whitespace-pre-wrap cursor-pointer hover:bg-yellow-50 rounded px-0.5" title={task.q4_target} onClick={() => setEditingQuarter({ taskId: task.id, field: "q4_target", value: task.q4_target || "" })}>
+                            {task.q4_target || "-"}
+                          </span>
+                          <button
+                            className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 text-blue-500 hover:text-blue-700 bg-white rounded-full shadow text-xs px-0.5"
+                            onClick={() => setEditingQuarter({ taskId: task.id, field: "q4_target", value: task.q4_target || "" })}
+                            title="编辑Q4目标"
+                          >✎</button>
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2.5 text-xs whitespace-pre-wrap" style={{ maxWidth: colWidths.last_month_target ? colWidths.last_month_target + 'px' : '100px', wordBreak: 'break-all' }} title={task.last_month_target}>{task.last_month_target || "-"}</td>
+                    <td className="py-2.5" style={{ minWidth: '120px' }}>
                       <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
                           <div className={`h-full rounded-full transition-all ${task.status === "completed" ? "bg-green-500" : (task.progress || 0) > 70 ? "bg-blue-500" : (task.progress || 0) > 30 ? "bg-yellow-500" : "bg-gray-400"}`} style={{ width: `${task.progress || 0}%` }} />
                         </div>
                         <span className="text-xs text-gray-500">{task.progress || 0}%</span>
