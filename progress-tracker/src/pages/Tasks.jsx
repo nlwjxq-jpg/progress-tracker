@@ -7,9 +7,9 @@ import { getAiApiUrl } from "../lib/deepseek"
 import { Plus, Search, Edit, FileText, Sparkles, Wand2, Trash2, Download } from "lucide-react"
 
 function getFunctionUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-assign` }
-function getAnalyzeUrl() { return `${import.meta.env.VITE_SUPABASE_URL}
+function getAnalyzeUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-progress` }
 
-const TASK_STATUS_LABELS = { pending: "待开始", in_progress: "进行中", completed: "已完成" }/functions/v1/analyze-progress` }
+const TASK_STATUS_LABELS = { pending: "待开始", in_progress: "进行中", completed: "已完成" }
 
 export default function Tasks() {
   const [tasks, setTasks] = useState([])
