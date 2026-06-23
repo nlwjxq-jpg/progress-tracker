@@ -401,7 +401,7 @@ export default function Tasks() {
                     </td>
                     <td className="py-2.5 pr-2 whitespace-normal break-words text-xs">{task.assessment_target || ""}</td>
                     <td className="py-2.5 pr-2 whitespace-normal break-words">
-                      <Link to={`/tasks/${task.id}`} className="text-blue-700 hover:underline font-medium">{task.title}</Link>
+                      <Link to={`/tasks/${task.id}/edit`} className="text-blue-700 hover:underline font-medium">{task.title}</Link>
                       {task.description && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{task.description}</p>}
                     </td>
                     <td className="py-2.5 pr-2 whitespace-nowrap text-xs">
@@ -443,7 +443,7 @@ export default function Tasks() {
                     </td>
                     <td className="py-2.5 whitespace-nowrap">
                       <div className="flex gap-1">
-                        <Link to={`/tasks/${task.id}`} className="p-1 hover:bg-gray-200 rounded transition-colors" title="编辑任务"><Edit size={14} /></Link>
+                        <Link to={`/tasks/${task.id}/edit`} className="p-1 hover:bg-gray-200 rounded transition-colors" title="编辑任务"><Edit size={14} /></Link>
                         <button onClick={() => openProgressModal(task)} className="p-1 hover:bg-blue-100 rounded transition-colors text-blue-600" title="填写进展/目标"><FileText size={14} /></button>
                       </div>
                     </td>
