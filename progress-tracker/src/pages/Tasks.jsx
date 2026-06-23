@@ -58,7 +58,7 @@ export default function Tasks() {
   const deptLeaders = members.filter(m => m.role.includes("部长") || m.role.includes("副部长"))
   const workMembers = members.filter(m => !(m.role.includes("部长") || m.role.includes("副部长")))
   // Column resize
-  const resizingRef = React.useRef(null)
+  const resizingRef = useRef(null)
 
   function startResize(col, e) {
     resizingRef.current = { col, startX: e.clientX }
