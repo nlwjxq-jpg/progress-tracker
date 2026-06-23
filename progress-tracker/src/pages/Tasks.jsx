@@ -7,7 +7,9 @@ import { getAiApiUrl } from "../lib/deepseek"
 import { Plus, Search, Edit, FileText, Sparkles, Wand2, Trash2, Download } from "lucide-react"
 
 function getFunctionUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-assign` }
-function getAnalyzeUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-progress` }
+function getAnalyzeUrl() { return `${import.meta.env.VITE_SUPABASE_URL}
+
+const TASK_STATUS_LABELS = { pending: "待开始", in_progress: "进行中", completed: "已完成" }/functions/v1/analyze-progress` }
 
 export default function Tasks() {
   const [tasks, setTasks] = useState([])
@@ -70,7 +72,7 @@ export default function Tasks() {
       t.assessment_target || "",
       t.title,
       t.due_date || "",
-      STATUS_LABELS[t.status] || t.status || "",
+      TASK_STATUS_LABELS[t.status] || t.status || "",
       t.work_assignee || t.assignee || "",
       t.dept_leader || "",
       t.q1_target || "",
@@ -408,7 +410,7 @@ export default function Tasks() {
                       {task.due_date ? <span className={`${status === "overdue" ? "text-red-600 font-medium" : status === "near-due" ? "text-orange-600" : "text-gray-600"}`}>{task.due_date}</span> : <span className="text-gray-300">--</span>}
                     </td>
                     <td className="py-2.5 pr-2 whitespace-nowrap">
-                      <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${task.status === "completed" ? "bg-green-100 text-green-700" : task.status === "in_progress" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>{STATUS_LABELS[task.status] || task.status || "待开始"}</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${task.status === "completed" ? "bg-green-100 text-green-700" : task.status === "in_progress" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>{TASK_STATUS_LABELS[task.status] || task.status || "待开始"}</span>
                     </td>
                     <td className="py-2.5 pr-2 whitespace-normal break-words text-xs">{workAssignee || <span className="text-orange-400">未分配</span>}</td>
                     <td className="py-2.5 pr-2 whitespace-normal break-words text-xs">{deptLeader || <span className="text-gray-300">--</span>}</td>
