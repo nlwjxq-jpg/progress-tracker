@@ -12,6 +12,8 @@ import ImportTasks from './pages/ImportTasks'
 import ImportMembers from './pages/ImportMembers'
 import Registrations from "./pages/Registrations"
 import ImportGoals from './pages/ImportGoals'
+import Meetings from './pages/Meetings'
+import ImportMeetings from './pages/ImportMeetings'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -37,6 +39,8 @@ export default function App() {
           <Route path="/import-members" element={<ImportMembers />} />
           <Route path="/registrations" element={<Registrations />} />
           <Route path="/import-goals" element={<ImportGoals />} />
+          <Route path="/meetings" element={<Meetings />} />
+          <Route path="/import-meetings" element={<ImportMeetings />} />
         </Route>
       </Routes>
     </AuthProvider>
