@@ -79,13 +79,24 @@ export default function Goals() {
       if (matches.length === 0) { setAiMsg("未获得 AI 关联结果" + (result.warning ? "：" + result.warning : "") + (result.raw ? "\n原始返回：" + result.raw.slice(0,200) : "")); return }
       setAiMsg(`AI 返回 ${matches.length} 条关联，正在更新...`)
       let updated = 0
+      const updateErrors = []
       for (const m of matches) {
         const task = tasks[m.taskIndex]
-        if (!task || !m.goalId) continue
+        if (!task) continue
+        if (!m.goalId) continue
         const { error } = await supabase.from(TABLES.TASKS).update({ goal_id: m.goalId, is_key: true }).eq("id", task.id)
-        if (!error) updated++
+        if (!error) {
+          updated++
+        } else {
+          updateErrors.push((task.title || "").substring(0,20) + ":" + error.message)
+        }
       }
-      setAiMsg(`完成：已关联 ${updated} 项任务`)
+      if (updated === 0 && updateErrors.length > 0) {
+        setAiMsg("关联失败：数据库更新被拒绝。错误：" + updateErrors.slice(0,3).join("；"))
+        setAiLinking(false)
+        return
+      }
+      setAiMsg(`完成：已关联 ${updated} 项任务` + (updateErrors.length > 0 ? `，${updateErrors.length} 项失败` : ""))
       loadData()
     } catch (err) { setAiMsg(`AI 关联失败：${err.message}`) }
     finally { setAiLinking(false); setTimeout(() => setAiMsg(""), 5000) }
