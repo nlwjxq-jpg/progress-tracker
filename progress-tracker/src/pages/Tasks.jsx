@@ -208,14 +208,13 @@ export default function Tasks() {
     if (filter === "active" && t.status === "completed") return false
     if (search) {
       const s = search.toLowerCase()
-      if (!(t.title || "").toLowerCase().includes(s) && !(t.description || "").toLowerCase().includes(s)) return false
-    }
-    if (selfOnly) {
-      const memberName = members.find(m => m.user_id === user?.id)?.name
-      if (!memberName) return false
-      const wa = t.work_assignee || t.assignee || ""
-      const dl = t.dept_leader || ""
-      if (wa !== memberName && dl !== memberName) return false
+      const fields = [
+        t.title, t.description, t.assessment_target, t.category,
+        t.work_assignee, t.assignee, t.dept_leader,
+        t.q1_target, t.q2_target, t.q3_target, t.q4_target,
+        t.last_month_target, t.last_month_progress, t.this_month_target
+      ]
+      if (!fields.some(f => (f || "").toLowerCase().includes(s))) return false
     }
     return true
   })
