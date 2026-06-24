@@ -6,6 +6,7 @@ import { LayoutDashboard, ListTodo, Building2, Target, LogOut, Wrench, Upload, U
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: '仪表盘' },
   { to: '/tasks', icon: ListTodo, label: '任务列表' },
+  { to: '/meetings', icon: Calendar, label: '会议列表' },
   { to: '/departments', icon: Building2, label: '部门与人员' },
   { to: '/registrations', icon: UserCheck, label: '注册审批' },
   { to: '/goals', icon: Target, label: '目标管理' },
