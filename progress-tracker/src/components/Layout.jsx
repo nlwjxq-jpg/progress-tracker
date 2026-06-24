@@ -9,7 +9,6 @@ const navItems = [
   { to: '/departments', icon: Building2, label: '部门与人员' },
   { to: '/registrations', icon: UserCheck, label: '注册审批' },
   { to: '/goals', icon: Target, label: '目标管理' },
-  { to: '/meetings', icon: Calendar, label: '会议列表' },
   { to: '/import-tasks', icon: Upload, label: '导入任务表' },
   { to: '/import-meetings', icon: Upload, label: '导入会议表' },
   { to: '/import-goals', icon: FileUp, label: '导入目标表' },
