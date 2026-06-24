@@ -103,7 +103,8 @@ export default function ImportTasks() {
       const { data: existing } = await supabase.from(TABLES.TASKS).select('title')
       const existingTitles = new Set((existing || []).map(t => t.title.trim()))
 
-      let added = 0, skipped = 0
+      let added = 0, skipped = 0, failed = 0
+      const insertErrors = []
       const now = new Date().toISOString()
 
       for (const task of toImport) {
@@ -131,7 +132,21 @@ export default function ImportTasks() {
         if (!insertErr) {
           added++
           existingTitles.add(task.title.trim())
+        } else {
+          failed++
+          if (insertErrors.length < 5) {
+            insertErrors.push(insertErr.message || insertErr.code)
+          }
         }
+      }
+
+      if (failed > 0 && added === 0) {
+        setError('导入失败：所有任务写入被拒绝。数据库错误：' + insertErrors.join('；'))
+        setImporting(false)
+        return
+      }
+      if (failed > 0) {
+        setWarning(failed + ' 项写入失败：' + insertErrors.join('；'))
       }
 
       setImportResult({ added, skipped })
