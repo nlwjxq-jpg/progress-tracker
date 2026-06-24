@@ -64,7 +64,8 @@ Deno.serve(async (req) => {
 返回一个 JSON 数组，每个元素格式：
 {
   "title": "任务名称（取"具体任务"列的完整内容，或如果没有具体任务列则用任务主题）",
-  "description": "任务描述，包含考核目标等补充信息",
+  "assessment_target": "考核目标（取"考核目标"列的内容，如该列为空则填null）",
+  "description": "任务描述或补充说明",
   "due_date": "截止日期（YYYY-MM-DD格式，如无明确日期则填null）",
   "priority": "low|normal|high|urgent（根据任务紧急程度判断，默认normal）",
   "q1_target": "Q1季度目标（取表头"一季度"对应列的内容，如该列为空则填null）",
@@ -77,7 +78,7 @@ Deno.serve(async (req) => {
 1. 第一行是表头，从第二行开始提取任务
 2. 根据表头定位"一季度/二季度/三季度/四季度"列，正确提取对应的 Q1-Q4 目标
 3. 不要将"上月工作目标"或"进度"列的内容填入 q1-q4_target
-4. "具体任务"列内容作为 title；如果有"考核目标"列，其内容合并到 description
+4. "具体任务"列内容作为 title；"考核目标"列内容作为 assessment_target；"任务类别"列内容作为 category
 5. 同类子任务应拆分为独立条目
 6. 没有明确截止日期的，due_date 填 null
 7. 如果某季度目标列的内容为"——"或空，该字段填 null
@@ -154,6 +155,8 @@ Deno.serve(async (req) => {
       // Clean up tasks - trim strings, normalize nulls
       tasks = tasks.map(t => ({
         title: (t.title || "").trim(),
+        assessment_target: t.assessment_target ? String(t.assessment_target).trim() : null,
+        category: t.category ? String(t.category).trim() : null,
         description: (t.description || "").trim(),
         due_date: t.due_date || null,
         priority: t.priority || "normal",

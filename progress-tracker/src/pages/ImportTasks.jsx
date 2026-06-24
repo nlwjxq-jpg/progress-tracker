@@ -113,6 +113,8 @@ export default function ImportTasks() {
         }
         const { error: insertErr } = await supabase.from(TABLES.TASKS).insert({
           title: task.title.trim(),
+          assessment_target: task.assessment_target || '',
+          category: task.category || '',
           description: task.description || '',
           due_date: task.due_date || null,
           priority: task.priority || 'normal',
@@ -237,7 +239,7 @@ export default function ImportTasks() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{task.title}</p>
-                  {task.description && <p className="text-xs text-gray-400 mt-0.5">{task.description}</p>}
+                  {task.assessment_target && <p className="text-xs text-orange-600 mt-0.5">考核目标：{task.assessment_target}</p>}{task.description && <p className="text-xs text-gray-400 mt-0.5">{task.description}</p>}
                   <div className="flex gap-3 mt-1 text-xs text-gray-500">
                     {task.due_date && <span>📅 {task.due_date}</span>}
                     <span className={`px-1.5 py-0.5 rounded ${
