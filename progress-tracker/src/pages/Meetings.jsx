@@ -2,12 +2,17 @@
 import { supabase } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
 import { getAiApiUrl } from "../lib/deepseek"
-import { Search, Sparkles, Trash2, Download, CheckCircle } from "lucide-react"
+import { Search, Sparkles, Trash2, Download, Plus, Edit, Save, X } from "lucide-react"
 import ConfidentialNotice from "../components/ConfidentialNotice";
 
 function getBatchAssignUrl() { return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/batch-assign` }
 
 const STATUS_LABELS = { pending: "待开始", in_progress: "进行中", completed: "已完成" }
+const STATUS_OPTIONS = [
+  { value: "pending", label: "待开始" },
+  { value: "in_progress", label: "进行中" },
+  { value: "completed", label: "已完成" }
+]
 
 export default function Meetings() {
   const [meetings, setMeetings] = useState([])
@@ -19,6 +24,11 @@ export default function Meetings() {
   const [deleting, setDeleting] = useState(false)
   const [aiMatching, setAiMatching] = useState(false)
   const [aiMsg, setAiMsg] = useState("")
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [editModal, setEditModal] = useState(null)
+  const [addForm, setAddForm] = useState({ meeting_name: "", meeting_date: "", task_description: "", assignee: "", status: "pending" })
+  const [editForm, setEditForm] = useState({ meeting_name: "", meeting_date: "", task_description: "", work_assignee: "", dept_leader: "", status: "pending" })
+  const [saving, setSaving] = useState(false)
   const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
 
   useEffect(() => { loadData() }, [])
@@ -67,6 +77,59 @@ export default function Meetings() {
       loadData()
     } catch (err) { console.error(err) }
     finally { setDeleting(false) }
+  }
+
+  async function handleAddMeeting() {
+    if (!addForm.meeting_name.trim()) return
+    setSaving(true)
+    try {
+      const now = new Date().toISOString()
+      await supabase.from("meetings").insert({
+        meeting_name: addForm.meeting_name.trim(),
+        meeting_date: addForm.meeting_date || null,
+        task_description: addForm.task_description,
+        assignee: addForm.assignee,
+        status: addForm.status,
+        department_id: userDeptId || null,
+        created_at: now, updated_at: now
+      })
+      setShowAddModal(false)
+      setAddForm({ meeting_name: "", meeting_date: "", task_description: "", assignee: "", status: "pending" })
+      loadData()
+    } catch (err) { console.error(err) }
+    finally { setSaving(false) }
+  }
+
+  function openEditModal(meeting) {
+    setEditModal(meeting.id)
+    setEditForm({
+      meeting_name: meeting.meeting_name || "",
+      meeting_date: meeting.meeting_date || "",
+      task_description: meeting.task_description || "",
+      work_assignee: meeting.work_assignee || meeting.assignee || "",
+      dept_leader: meeting.dept_leader || "",
+      status: meeting.status || "pending"
+    })
+  }
+
+  async function saveEditModal() {
+    if (!editModal || !editForm.meeting_name.trim()) return
+    setSaving(true)
+    try {
+      await supabase.from("meetings").update({
+        meeting_name: editForm.meeting_name.trim(),
+        meeting_date: editForm.meeting_date || null,
+        task_description: editForm.task_description,
+        work_assignee: editForm.work_assignee,
+        dept_leader: editForm.dept_leader,
+        assignee: editForm.work_assignee,
+        status: editForm.status,
+        updated_at: new Date().toISOString()
+      }).eq("id", editModal)
+      setEditModal(null)
+      loadData()
+    } catch (err) { console.error(err) }
+    finally { setSaving(false) }
   }
 
   async function handleAiBatchMatch() {
@@ -147,6 +210,9 @@ export default function Meetings() {
             <Sparkles size={16} className={aiMatching ? "animate-pulse text-blue-500" : "text-blue-500"} /> AI 校验修正
           </button>
         </div>
+        <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+          <Plus size={18} /> 增加会议
+        </button>
       </div>
 
       {aiMsg && (
@@ -192,6 +258,7 @@ export default function Meetings() {
                 <th className="pb-2 font-medium w-20">工作负责人</th>
                 <th className="pb-2 font-medium w-20">部门负责人</th>
                 <th className="pb-2 font-medium w-16">状态</th>
+                <th className="pb-2 font-medium w-16">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -215,11 +282,108 @@ export default function Meetings() {
                         {STATUS_LABELS[meeting.status] || meeting.status || "待开始"}
                       </span>
                     </td>
+                    <td className="py-2.5 pr-2 whitespace-nowrap">
+                      <button onClick={() => openEditModal(meeting)} className="p-1 hover:bg-gray-200 rounded transition-colors" title="修改会议">
+                        <Edit size={14} />
+                      </button>
+                    </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Add Meeting Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold">新增会议任务</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">会议名称 *</label>
+              <input className="input-field" value={addForm.meeting_name} onChange={e => setAddForm(f => ({ ...f, meeting_name: e.target.value }))} placeholder="输入会议名称" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">会议时间</label>
+              <input className="input-field" value={addForm.meeting_date} onChange={e => setAddForm(f => ({ ...f, meeting_date: e.target.value }))} placeholder="如：2026-03-15 或 4月中旬" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">部门任务</label>
+              <textarea className="input-field" rows={3} value={addForm.task_description} onChange={e => setAddForm(f => ({ ...f, task_description: e.target.value }))} placeholder="描述该会议相关的部门任务" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">责任人</label>
+              <input className="input-field" value={addForm.assignee} onChange={e => setAddForm(f => ({ ...f, assignee: e.target.value }))} placeholder="输入责任人姓名" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">状态</label>
+              <div className="flex gap-2">
+                {STATUS_OPTIONS.map(s => (
+                  <button key={s.value} type="button" onClick={() => setAddForm(f => ({ ...f, status: s.value }))}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${addForm.status === s.value ? "bg-blue-100 text-blue-700 border border-blue-300" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>{s.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button className="btn-secondary" onClick={() => setShowAddModal(false)}>取消</button>
+              <button className="btn-primary flex items-center gap-2" onClick={handleAddMeeting} disabled={saving}>
+                <Save size={16} />{saving ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Meeting Modal */}
+      {editModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={() => setEditModal(null)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-lg space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold">修改会议任务</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">会议名称 *</label>
+              <input className="input-field" value={editForm.meeting_name} onChange={e => setEditForm(f => ({ ...f, meeting_name: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">会议时间</label>
+              <input className="input-field" value={editForm.meeting_date} onChange={e => setEditForm(f => ({ ...f, meeting_date: e.target.value }))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">部门任务</label>
+              <textarea className="input-field" rows={3} value={editForm.task_description} onChange={e => setEditForm(f => ({ ...f, task_description: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">工作负责人</label>
+                <select className="input-field" value={editForm.work_assignee} onChange={e => setEditForm(f => ({ ...f, work_assignee: e.target.value }))}>
+                  <option value="">-- 选择 --</option>
+                  {workMembers.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">部门负责人</label>
+                <select className="input-field" value={editForm.dept_leader} onChange={e => setEditForm(f => ({ ...f, dept_leader: e.target.value }))}>
+                  <option value="">-- 选择 --</option>
+                  {deptLeaders.map(m => <option key={m.id} value={m.name}>{m.name} ({m.role})</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">状态</label>
+              <div className="flex gap-2">
+                {STATUS_OPTIONS.map(s => (
+                  <button key={s.value} type="button" onClick={() => setEditForm(f => ({ ...f, status: s.value }))}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${editForm.status === s.value ? "bg-blue-100 text-blue-700 border border-blue-300" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>{s.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button className="btn-secondary" onClick={() => setEditModal(null)}>取消</button>
+              <button className="btn-primary flex items-center gap-2" onClick={saveEditModal} disabled={saving}>
+                <Save size={16} />{saving ? "保存中..." : "保存修改"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
