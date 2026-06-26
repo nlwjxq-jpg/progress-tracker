@@ -26,7 +26,7 @@ export default function Policies() {
   const [aiMsg, setAiMsg] = useState("")
   const [showAddModal, setShowAddModal] = useState(false)
   const [editModal, setEditModal] = useState(null)
-  const [addForm, setAddForm] = useState({ policy_name: "", deadline: "", task_description: "", assignee: "", status: "pending" })
+  const [addForm, setAddForm] = useState({ policy_name: "", deadline: "", task_description: "", assignee: "", work_assignee: "", dept_leader: "", status: "pending" })
   const [editForm, setEditForm] = useState({ policy_name: "", deadline: "", task_description: "", work_assignee: "", dept_leader: "", status: "pending" })
   const [saving, setSaving] = useState(false)
   const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
@@ -87,13 +87,15 @@ export default function Policies() {
         policy_name: addForm.policy_name.trim(),
         deadline: addForm.deadline || null,
         task_description: addForm.task_description,
-        assignee: addForm.assignee,
+        assignee: addForm.work_assignee || addForm.assignee,
+        work_assignee: addForm.work_assignee,
+        dept_leader: addForm.dept_leader,
         status: addForm.status,
         department_id: userDeptId || null,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString()
       })
       setShowAddModal(false)
-      setAddForm({ policy_name: "", deadline: "", task_description: "", assignee: "", status: "pending" })
+      setAddForm({ policy_name: "", deadline: "", task_description: "", assignee: "", work_assignee: "", dept_leader: "", status: "pending" })
       loadData()
     } catch (err) { console.error(err) }
     finally { setSaving(false) }
@@ -314,6 +316,22 @@ export default function Policies() {
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">责任人</label>
               <input className="input-field" value={addForm.assignee} onChange={e => setAddForm(f => ({ ...f, assignee: e.target.value }))} placeholder="输入责任人姓名" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">工作负责人</label>
+                <select className="input-field" value={addForm.work_assignee} onChange={e => setAddForm(f => ({ ...f, work_assignee: e.target.value }))}>
+                  <option value="">-- 选择 --</option>
+                  {workMembers.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">部门负责人</label>
+                <select className="input-field" value={addForm.dept_leader} onChange={e => setAddForm(f => ({ ...f, dept_leader: e.target.value }))}>
+                  <option value="">-- 选择 --</option>
+                  {deptLeaders.map(m => <option key={m.id} value={m.name}>{m.name} ({m.role})</option>)}
+                </select>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">状态</label>
