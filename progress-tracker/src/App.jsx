@@ -14,6 +14,8 @@ import Registrations from "./pages/Registrations"
 import ImportGoals from './pages/ImportGoals'
 import Meetings from './pages/Meetings'
 import ImportMeetings from './pages/ImportMeetings'
+import Policies from './pages/Policies'
+import ImportPolicies from './pages/ImportPolicies'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -41,6 +43,8 @@ export default function App() {
           <Route path="/import-goals" element={<ImportGoals />} />
           <Route path="/meetings" element={<Meetings />} />
           <Route path="/import-meetings" element={<ImportMeetings />} />
+          <Route path="/policies" element={<Policies />} />
+          <Route path="/import-policies" element={<ImportPolicies />} />
         </Route>
       </Routes>
     </AuthProvider>

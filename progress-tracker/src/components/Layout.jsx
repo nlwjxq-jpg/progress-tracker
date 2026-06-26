@@ -1,6 +1,6 @@
 ﻿import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { LayoutDashboard, ListTodo, Building2, Target, LogOut, Wrench, Upload, UserPlus, FileUp, UserCheck, Calendar } from 'lucide-react'
+import { LayoutDashboard, ListTodo, Building2, Target, LogOut, Wrench, Upload, UserPlus, FileUp, UserCheck, Calendar, BookOpen } from 'lucide-react'
 
 
 const navItems = [
