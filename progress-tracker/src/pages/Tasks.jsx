@@ -29,6 +29,7 @@ export default function Tasks() {
   const [selfOnly, setSelfOnly] = useState(false)
   const [reportGenerating, setReportGenerating] = useState(false)
   const [reportMsg, setReportMsg] = useState("")
+  const [summaryGenerating, setSummaryGenerating] = useState(false)
   const [quarterModal, setQuarterModal] = useState(null)
 
   const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
@@ -92,6 +93,50 @@ export default function Tasks() {
     a.download = "任务列表_" + new Date().toISOString().slice(0, 10) + ".csv"
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  async function generateAnnualSummary() {
+    const sourceTasks = selected.size > 0 ? sortedTasks.filter(t => selected.has(t.id)) : sortedTasks
+    if (sourceTasks.length === 0) { setReportMsg("请先选择任务"); return }
+    setSummaryGenerating(true)
+    setReportMsg("正在生成全年总结...")
+    try {
+      const funcUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-summary`
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const tasksData = sourceTasks.map(t => ({
+        title: t.title,
+        is_key: t.is_key,
+        assessment_target: t.assessment_target || "",
+        progress: t.progress || 0,
+        status: t.status,
+        q1_target: t.q1_target || "",
+        q2_target: t.q2_target || "",
+        q3_target: t.q3_target || "",
+        q4_target: t.q4_target || "",
+        last_month_progress: t.last_month_progress || "",
+        last_month_target: t.last_month_target || "",
+        this_month_target: t.this_month_target || ""
+      }))
+      const resp = await fetch(funcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}` },
+        body: JSON.stringify({ tasks: tasksData, apiUrl: getAiApiUrl(), apiKey: localStorage.getItem("deepseek_api_key") || "" })
+      })
+      const result = await resp.json()
+      if (!resp.ok) throw new Error(result.error || "生成失败")
+      const docContent = result.report || result.content || ""
+      const blob = new Blob(["\uFEFF" + docContent], { type: "application/msword;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `年度工作总结_${new Date().getFullYear()}_${new Date().toISOString().slice(0,10)}.doc`
+      a.click()
+      URL.revokeObjectURL(url)
+      setReportMsg("全年总结已生成并下载")
+      setTimeout(() => setReportMsg(""), 4000)
+    } catch (err) {
+      setReportMsg("生成失败: " + err.message)
+    } finally { setSummaryGenerating(false) }
   }
 
   async function generateMonthlyReport(month) {
@@ -356,6 +401,7 @@ export default function Tasks() {
         <button onClick={exportToExcel} className="btn-secondary flex items-center gap-2 text-sm"><Download size={16} /> 导出Excel</button>
         <button onClick={() => generateMonthlyReport("current")} disabled={reportGenerating} className="btn-secondary flex items-center gap-2 text-sm" title="生成当月选中任务的月度报告"><FileText size={16} /> {reportGenerating ? "生成中..." : "当月月报"}</button>
         <button onClick={() => generateMonthlyReport("last")} disabled={reportGenerating} className="btn-secondary flex items-center gap-2 text-sm" title="生成上月选中任务的月度报告"><FileText size={16} /> {reportGenerating ? "生成中..." : "上月月报"}</button>
+        <button onClick={generateAnnualSummary} disabled={summaryGenerating} className="btn-secondary flex items-center gap-2 text-sm" title="AI生成选中任务的年度工作总结报告"><FileText size={16} /> {summaryGenerating ? "生成中..." : "全年总结"}</button>
       </div>
 
       {filteredTasks.length === 0 ? (
