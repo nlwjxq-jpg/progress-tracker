@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { supabase, TABLES } from "../lib/supabase"
 import { useAuth } from "../context/AuthContext"
@@ -31,6 +31,8 @@ export default function Tasks() {
   const [reportMsg, setReportMsg] = useState("")
   const [summaryGenerating, setSummaryGenerating] = useState(false)
   const [quarterModal, setQuarterModal] = useState(null)
+  const [sortKey, setSortKey] = useState("is_key")
+  const [sortOrder, setSortOrder] = useState("asc")
 
   const { user, isAdmin, isDeptAdmin, userDeptId } = useAuth()
 
@@ -178,9 +180,31 @@ export default function Tasks() {
     } finally { setReportGenerating(false) }
   }
 
+  function toggleSort(column) {
+    if (sortKey === column) {
+      setSortOrder(prev => prev === "asc" ? "desc" : "asc")
+    } else {
+      setSortKey(column)
+      setSortOrder("asc")
+    }
+  }
+
+  function getSortIcon(column) {
+    if (sortKey !== column) return <span className="inline-block w-3 text-gray-300">↕</span>
+    return sortOrder === "asc" ? <span className="inline-block w-3 text-blue-600">▲</span> : <span className="inline-block w-3 text-blue-600">▼</span>
+  }
+
   const sortedTasks = [...tasks].sort((a, b) => {
+    // Always sort key tasks first
     if (a.is_key && !b.is_key) return -1
     if (!a.is_key && b.is_key) return 1
+    // If both same type, apply user-chosen sort
+    if (sortKey === "is_key") return 0
+    const dir = sortOrder === "asc" ? 1 : -1
+    const va = (a[sortKey] ?? "").toString().toLowerCase()
+    const vb = (b[sortKey] ?? "").toString().toLowerCase()
+    if (va < vb) return -1 * dir
+    if (va > vb) return 1 * dir
     return 0
   })
 
@@ -414,19 +438,19 @@ export default function Tasks() {
                 <th className="pb-2 font-medium w-8">
                   <input type="checkbox" className="accent-blue-600" checked={filteredTasks.length > 0 && filteredTasks.every(t => selected.has(t.id))} onChange={toggleSelectAll} />
                 </th>
-                <th className="pb-2 font-medium w-20">任务类别</th>
-                <th className="pb-2 font-medium w-32">考核目标</th>
-                <th className="pb-2 font-medium w-40">具体任务</th>
-                <th className="pb-2 font-medium w-20">截止日期</th>
-                <th className="pb-2 font-medium w-16">状态</th>
-                <th className="pb-2 font-medium w-16">工作<br/>责任人</th>
-                <th className="pb-2 font-medium w-16">部门<br/>负责人</th>
-                <th className="pb-2 font-medium w-24">一季度</th>
-                <th className="pb-2 font-medium w-24">二季度</th>
-                <th className="pb-2 font-medium w-24">三季度</th>
-                <th className="pb-2 font-medium w-24">四季度</th>
-                <th className="pb-2 font-medium w-28">上月工作目标</th>
-                <th className="pb-2 font-medium w-16">进度</th>
+                <th className="pb-2 font-medium w-20 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("category")}>任务类别{getSortIcon("category")}</th>
+                <th className="pb-2 font-medium w-32 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("assessment_target")}>考核目标{getSortIcon("assessment_target")}</th>
+                <th className="pb-2 font-medium w-40 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("title")}>具体任务{getSortIcon("title")}</th>
+                <th className="pb-2 font-medium w-20 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("due_date")}>截止日期{getSortIcon("due_date")}</th>
+                <th className="pb-2 font-medium w-16 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("status")}>状态{getSortIcon("status")}</th>
+                <th className="pb-2 font-medium w-16 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("work_assignee")}>工作<br/>责任人{getSortIcon("work_assignee")}</th>
+                <th className="pb-2 font-medium w-16 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("dept_leader")}>部门<br/>负责人{getSortIcon("dept_leader")}</th>
+                <th className="pb-2 font-medium w-24 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("q1_target")}>一季度{getSortIcon("q1_target")}</th>
+                <th className="pb-2 font-medium w-24 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("q2_target")}>二季度{getSortIcon("q2_target")}</th>
+                <th className="pb-2 font-medium w-24 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("q3_target")}>三季度{getSortIcon("q3_target")}</th>
+                <th className="pb-2 font-medium w-24 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("q4_target")}>四季度{getSortIcon("q4_target")}</th>
+                <th className="pb-2 font-medium w-28 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("last_month_target")}>上月工作目标{getSortIcon("last_month_target")}</th>
+                <th className="pb-2 font-medium w-16 cursor-pointer select-none hover:text-blue-600" onClick={() => toggleSort("progress")}>进度{getSortIcon("progress")}</th>
                 <th className="pb-2 font-medium w-24">操作</th>
               </tr>
             </thead>
