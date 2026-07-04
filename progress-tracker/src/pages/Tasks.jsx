@@ -30,6 +30,7 @@ export default function Tasks() {
   const [reportGenerating, setReportGenerating] = useState(false)
   const [reportMsg, setReportMsg] = useState("")
   const [summaryGenerating, setSummaryGenerating] = useState(false)
+  const [syncingGoals, setSyncingGoals] = useState(false)
   const [quarterModal, setQuarterModal] = useState(null)
   const [sortKey, setSortKey] = useState("is_key")
   const [sortOrder, setSortOrder] = useState("asc")
@@ -62,6 +63,40 @@ export default function Tasks() {
   function getTaskCount(memberName) {
     if (!memberName) return 0
     return tasks.filter(t => { const wa = t.work_assignee || t.assignee || ""; const dl = t.dept_leader || ""; return wa === memberName || dl === memberName }).length
+  }
+
+  async function syncGoalsToTasks() {
+    setSyncingGoals(true)
+    setAiMsg("正在从目标管理同步考核目标...")
+    try {
+      // Only process tasks that have a goal_id
+      const tasksWithGoal = tasks.filter(t => t.goal_id)
+      if (tasksWithGoal.length === 0) {
+        setAiMsg("没有关联目标的任务需要同步")
+        setTimeout(() => setAiMsg(""), 3000)
+        return
+      }
+      let updated = 0
+      for (const task of tasksWithGoal) {
+        const goal = goals.find(g => g.id === task.goal_id)
+        if (!goal) continue
+        const newAssessment = goal.title || ""
+        // Only update if goal title is different from current assessment_target
+        if (newAssessment !== (task.assessment_target || "")) {
+          const { error } = await supabase.from(TABLES.TASKS)
+            .update({ assessment_target: newAssessment })
+            .eq("id", task.id)
+          if (!error) updated++
+        }
+      }
+      setAiMsg(`同步完成：已更新 ${updated} 项任务的考核目标`)
+      loadData()
+    } catch (err) {
+      setAiMsg(`同步失败：${err.message}`)
+    } finally {
+      setSyncingGoals(false)
+      setTimeout(() => setAiMsg(""), 4000)
+    }
   }
 
   function exportToExcel() {
@@ -422,6 +457,7 @@ export default function Tasks() {
         </button>
       )}
       {unassignedCount > 0 && <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded-full">{unassignedCount} 项未分配负责人</span>}
+        <button onClick={syncGoalsToTasks} disabled={syncingGoals} className="btn-secondary flex items-center gap-2 text-sm" title="将目标管理中的目标标题同步更新至任务列表的考核目标列"><Sparkles size={16} className={syncingGoals ? "animate-pulse text-blue-500" : "text-blue-500"} /> {syncingGoals ? "同步中..." : "更新目标管理至任务列表"}</button>
         <button onClick={exportToExcel} className="btn-secondary flex items-center gap-2 text-sm"><Download size={16} /> 导出Excel</button>
         <button onClick={() => generateMonthlyReport("current")} disabled={reportGenerating} className="btn-secondary flex items-center gap-2 text-sm" title="生成当月选中任务的月度报告"><FileText size={16} /> {reportGenerating ? "生成中..." : "当月月报"}</button>
         <button onClick={() => generateMonthlyReport("last")} disabled={reportGenerating} className="btn-secondary flex items-center gap-2 text-sm" title="生成上月选中任务的月度报告"><FileText size={16} /> {reportGenerating ? "生成中..." : "上月月报"}</button>
