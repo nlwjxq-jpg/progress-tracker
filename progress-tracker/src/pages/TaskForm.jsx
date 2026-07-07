@@ -76,12 +76,19 @@ export default function TaskForm() {
     setSaving(true)
     try {
       const now = new Date().toISOString()
+      // Auto-set is_key and assessment_target based on goal_id selection
+      const selectedGoal = form.goal_id ? goals.find(g => g.id === form.goal_id) : null
+      const finalIsKey = selectedGoal ? true : form.is_key
+      const finalAssessmentTarget = selectedGoal ? selectedGoal.title : ""
       const payload = {
         title: form.title, description: form.description,
         work_assignee: form.work_assignee, dept_leader: form.dept_leader,
         assignee: form.work_assignee,
         due_date: form.due_date || null, goal_id: form.goal_id || null,
-        priority: form.priority, is_key: form.is_key, updated_at: now
+        priority: form.priority,
+        is_key: finalIsKey,
+        assessment_target: finalAssessmentTarget,
+        updated_at: now
       }
       if (isEdit) {
         await supabase.from(TABLES.TASKS).update(payload).eq("id", id)
@@ -93,7 +100,18 @@ export default function TaskForm() {
     finally { setSaving(false) }
   }
 
-  const updateField = (key, value) => setForm(f => ({ ...f, [key]: value }))
+  const updateField = (key, value) => {
+    // When goal_id changes, auto-toggle is_key
+    if (key === "goal_id") {
+      if (value) {
+        setForm(f => ({ ...f, goal_id: value, is_key: true }))
+      } else {
+        setForm(f => ({ ...f, goal_id: "", is_key: false }))
+      }
+      return
+    }
+    setForm(f => ({ ...f, [key]: value }))
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -160,6 +178,22 @@ export default function TaskForm() {
             <option value="">-- 不关联 --</option>
             {goals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
           </select>
+          <p className="text-xs text-gray-400 mt-1">选择关联目标后自动设为"重点任务"，考核目标列自动填充目标标题</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">任务类型</label>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="is_key" checked={form.is_key} onChange={() => updateField("is_key", true)} className="accent-blue-600" />
+              <span className="text-sm text-blue-700 font-medium">重点任务</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="is_key" checked={!form.is_key} onChange={() => updateField("is_key", false)} className="accent-gray-500" />
+              <span className="text-sm text-gray-500">日常任务</span>
+            </label>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">选择关联目标后自动设为"重点任务"，也可手动切换</p>
         </div>
 
         <div className="flex gap-3 pt-2">
